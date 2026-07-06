@@ -1,7 +1,8 @@
 # base_ssh + tty_config. Reproduces stemcell_builder/stages/base_ssh/apply.sh sed/echo edits
 # on $root/etc/ssh/sshd_config, and installs the cipher/mac hardening the os_image spec asserts.
 # Assets are inlined for reproducibility (nested git repo access not available in Nix sandbox).
-{}:
+# Accepts stageAssets for forward-compatibility with later overlays, though not used here.
+{ stageAssets }:
 {
   name = "ssh";
   script = ''

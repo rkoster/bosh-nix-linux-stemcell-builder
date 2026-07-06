@@ -3,11 +3,12 @@
 # (users before anything asserting group membership; ssh after base packages).
 { callPackage, lib }:
 let
+  stageAssets = callPackage ../lib/stage-assets.nix { };
   applyOverlay = callPackage ../lib/mk-overlay.nix { };
   base = callPackage ./noble-rootfs.nix { };
 
   overlays = [
-    (import ../lib/overlays/ssh.nix { })
+    (import ../lib/overlays/ssh.nix { inherit stageAssets; })
   ];
 
   final = lib.foldl (acc: ov: applyOverlay {
