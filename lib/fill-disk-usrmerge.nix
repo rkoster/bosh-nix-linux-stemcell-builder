@@ -2,7 +2,7 @@
 #
 # WHY THIS EXISTS
 # ---------------
-# The upstream fork's fillDiskWithDebs unpacks every .deb with a raw
+# Upstream nixpkgs' fillDiskWithDebs unpacks every .deb with a raw
 # `dpkg-deb --extract "$deb" /mnt`. Under the hood that is GNU tar WITHOUT
 # `--keep-directory-symlink`. On a usrmerged distro (Ubuntu Noble):
 #
@@ -23,9 +23,13 @@
 # extract the same way: `--keep-directory-symlink`, which routes a package's
 # ./sbin/* into /usr/sbin via the preserved symlink instead of clobbering it.
 #
-# Everything else is copied verbatim from the fork's fillDiskWithDebs /
-# makeImageFromDebDist (pinned, read-only in the Nix store) so behaviour is
-# otherwise identical. Only the extraction command on the marked line changed.
+# EVERYTHING ELSE is a verbatim mirror of upstream nixpkgs' current
+# fillDiskWithDebs / makeImageFromDebDist (pkgs/build-support/vm/default.nix in
+# the pinned nixos-26.05). In particular it uses the structuredAttrs bash arrays
+# `debsFlat` / `debsGrouped` (upstream migrated to structuredAttrs; the old
+# `for deb in $debs` scalar iteration silently unpacks nothing under it). Only
+# the extraction command on the marked line differs from upstream. Keep this
+# file in sync with upstream fillDiskWithDebs when bumping nixpkgs.
 { vmTools, stdenv, lib, dpkg, glibc, xz, gnutar, util-linux, fetchurl }:
 
 let
@@ -39,7 +43,15 @@ let
     vmTools.runInLinuxVM (stdenv.mkDerivation ({
       inherit name postInstall QEMU_OPTS memSize;
 
-      debs = (lib.intersperse "|" debs);
+      debsFlat = lib.flatten debs;
+      # `debs` is a list-of-lists (dpkg SCC components). structuredAttrs cannot
+      # export a nested list as a usable bash array, so upstream's
+      # `debsGrouped = debs` yields an EMPTY "''${debsGrouped[@]}" and the install
+      # loop runs zero times (no postinst scripts → no /etc/passwd, etc.). We
+      # instead export a FLAT list of strings, one per component (its debs
+      # space-joined); the install loop then re-splits each on whitespace. This
+      # matches the pre-structuredAttrs fork behaviour (debs = intersperse "|").
+      debsGrouped = map (component: builtins.concatStringsSep " " component) debs;
 
       preVM = vmTools.createEmptyImage { inherit size fullName; };
 
@@ -53,16 +65,16 @@ let
         # (which have lots of circular dependencies) from barfing.
         echo "unpacking Debs..."
 
-        for deb in $debs; do
-          if test "$deb" != "|"; then
-            echo "$deb..."
-            # >>> usrmerge-safe extraction (the one change vs. upstream) <<<
-            # `--keep-directory-symlink` stops a package's real ./sbin (or
-            # ./bin, ./lib) directory entry from replacing the /sbin ->
-            # usr/sbin symlink base-files created. See file header.
-            dpkg-deb --fsys-tarfile "$deb" \
-              | tar -C /mnt -xf - --keep-directory-symlink
-          fi
+        for deb in "''${debsFlat[@]}"; do
+          echo "$deb..."
+          # >>> usrmerge-safe extraction (the one change vs. upstream) <<<
+          # Upstream does `dpkg-deb --extract "$deb" /mnt`, i.e. GNU tar
+          # WITHOUT --keep-directory-symlink. `--keep-directory-symlink` stops
+          # a package's real ./sbin (or ./bin, ./lib) directory entry from
+          # replacing the /sbin -> usr/sbin symlink base-files created. See
+          # file header.
+          dpkg-deb --fsys-tarfile "$deb" \
+            | tar -C /mnt -xf - --keep-directory-symlink
         done
 
         # Make the Nix store available in /mnt, because that's where the .debs live.
@@ -85,10 +97,7 @@ let
 
         export DEBIAN_FRONTEND=noninteractive
 
-        oldIFS="$IFS"
-        IFS="|"
-        for component in $debs; do
-          IFS="$oldIFS"
+        for component in "''${debsGrouped[@]}"; do
           echo
           echo ">>> INSTALLING COMPONENT: $component"
           debs=

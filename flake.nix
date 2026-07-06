@@ -1,10 +1,14 @@
 {
   description = "Nix POC: Ubuntu Noble BOSH stemcell (milestones M0-M1)";
 
-  # Inputs match lheckemann/nixbuntu-samples exactly; poc/flake.lock pins the
-  # revisions verbatim so evaluation is reproducible without ref resolution.
+  # Upstream nixpkgs stable release. Replaces the unmaintained
+  # github:lheckemann/nixpkgs#foreign-distros fork: nixos-26.05 ships the same
+  # vmTools deb-image machinery (runInLinuxVM, createEmptyImage,
+  # debClosureGenerator, defaultCreateRootFS) the POC relies on. The one thing
+  # upstream still gets wrong for usrmerged Ubuntu (raw dpkg-deb extract) is
+  # fixed locally in poc/lib/fill-disk-usrmerge.nix.
   inputs = {
-    nixpkgs.url = "github:lheckemann/nixpkgs/foreign-distros";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     flake-parts.url = "github:hercules-ci/flake-parts";
   };
 

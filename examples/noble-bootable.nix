@@ -1,4 +1,9 @@
-{ vmTools, udev, gptfdisk, util-linux, dosfstools, e2fsprogs, callPackage }:
+# NOTE: use systemdMinimal, not `udev`. In nixos-26.05 `pkgs.udev` aliases
+# systemd-minimal-libs (a libs-only output with NO systemd-udevd / udevadm
+# binaries); referencing it makes postInstall fail with "No such file or
+# directory". systemdMinimal is the smallest package that still ships the udev
+# binaries we need to populate /dev for grub-install.
+{ vmTools, systemdMinimal, gptfdisk, util-linux, dosfstools, e2fsprogs, callPackage }:
 
 let
   noble = callPackage ../lib/noble-distro.nix { };
@@ -52,9 +57,9 @@ makeImageFromDebDist {
   '';
 
   postInstall = ''
-    ${udev}/lib/systemd/systemd-udevd &
-    ${udev}/bin/udevadm trigger
-    ${udev}/bin/udevadm settle
+    ${systemdMinimal}/lib/systemd/systemd-udevd &
+    ${systemdMinimal}/bin/udevadm trigger
+    ${systemdMinimal}/bin/udevadm settle
 
     ${util-linux}/bin/mount -t sysfs sysfs /mnt/sys
 
@@ -72,6 +77,9 @@ makeImageFromDebDist {
     GRUB_CMDLINE_LINUX_DEFAULT=""
     EOF
     sed -i '/TIMEOUT_HIDDEN/d' /etc/default/grub
+    # update-grub (grub-mkconfig) writes /boot/grub/grub.cfg.new and needs the
+    # directory to pre-exist; grub-install (which would create it) runs later.
+    mkdir -p /boot/grub
     update-grub
     # --removable writes /EFI/BOOT/BOOTX64.EFI, which OVMF always tries even
     # without a persisted NVRAM boot entry (required for fresh headless boots).
