@@ -8,6 +8,7 @@ let
   base = callPackage ./noble-rootfs.nix { };
 
   overlays = [
+    (import ../lib/overlays/users.nix { })
     (import ../lib/overlays/ssh.nix { inherit stageAssets; })
   ];
 
