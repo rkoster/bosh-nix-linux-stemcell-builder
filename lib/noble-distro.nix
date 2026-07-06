@@ -1,8 +1,9 @@
 # Noble APT distribution coordinates for makeImageFromDebDist.
-# The fork's vmTools.debDistros has no 2404/noble entry, so we supply our own.
-# basePackages reuses jammy's common base (== commonDebPackages ++ diffutils libc-bin),
-# which is the closest predefined analogue in the fork.
-{ lib, fetchurl, vmTools }:
+# nixpkgs' vmTools.debDistros has no 2404/noble entry we want to depend on
+# (upstream's ubuntu2404 pins snapshot.ubuntu.com, which we do not control), so
+# we supply our own coordinates. basePackages is the generic Debian build base,
+# inlined in ./base-packages.nix (formerly vmTools.debDistros.ubuntu2204x86_64.packages).
+{ fetchurl }:
 
 let
   src = import ./noble-source.nix;
@@ -23,5 +24,5 @@ in
     (fetchIndex "multiverse" "1sjh2wzbwvrxz098l6625igxb0lcdpkm4v9azhmvfjl6w07ld040")
   ];
 
-  basePackages = vmTools.debDistros.ubuntu2204x86_64.packages;
+  basePackages = import ./base-packages.nix;
 }
