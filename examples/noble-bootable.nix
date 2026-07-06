@@ -2,8 +2,13 @@
 
 let
   noble = callPackage ../lib/noble-distro.nix { };
+  # Usrmerge-safe fork of vmTools.makeImageFromDebDist. Upstream's raw
+  # `dpkg-deb --extract` clobbers the /sbin -> usr/sbin symlink when a package
+  # ships a real ./sbin directory, which breaks the start-stop-daemon diversion.
+  # See poc/lib/fill-disk-usrmerge.nix for the full analysis.
+  inherit (callPackage ../lib/fill-disk-usrmerge.nix { }) makeImageFromDebDist;
 in
-vmTools.makeImageFromDebDist {
+makeImageFromDebDist {
   inherit (noble) name fullName urlPrefix packagesLists;
 
   # Full package set from the shared assembler — identical to the set the Task 1.4
@@ -27,11 +32,23 @@ vmTools.makeImageFromDebDist {
     mkdir -p /mnt/{proc,dev,sys,boot/efi}
     ${util-linux}/bin/mount -t vfat "$disk"1 /mnt/boot/efi
     touch /mnt/.debug
-    
-    # Stub out files that sysvinit-utils postinst will try to move but don't exist yet.
-    # This prevents "mv: cannot stat" errors during package installation.
-    mkdir -p /mnt/sbin
-    touch /mnt/sbin/start-stop-daemon
+
+    # The fork's fillDiskWithDebs runs a debootstrap-style no-op diversion around
+    # dpkg configuration: it `mv /mnt/sbin/start-stop-daemon .REAL`, drops a
+    # `#!/bin/true` in its place, configures, then restores. That assumes the file
+    # already exists — but NO package in the Noble set ships start-stop-daemon, so
+    # the mv fails ("cannot stat") and the build dies.
+    #
+    # We must provide it, but NOT by `mkdir /mnt/sbin`: Noble is usrmerged and
+    # base-files ships `/sbin` as a symlink -> usr/sbin. Pre-creating /sbin as a
+    # real directory makes base-files extraction fail with
+    #   tar: ./sbin: Cannot create symlink to 'usr/sbin': File exists
+    # Instead, seed the stub at the REAL merged location. Extraction then creates
+    # the /sbin -> usr/sbin symlink normally, and the diversion resolves
+    # /mnt/sbin/start-stop-daemon through it to this file.
+    mkdir -p /mnt/usr/sbin
+    printf '#!/bin/true\n' > /mnt/usr/sbin/start-stop-daemon
+    chmod 755 /mnt/usr/sbin/start-stop-daemon
   '';
 
   postInstall = ''

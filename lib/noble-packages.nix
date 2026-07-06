@@ -5,12 +5,11 @@
 # Note Noble's 64-bit time_t (t64) ABI transition and PAM change:
 #   jammy libaio1        -> noble libaio1t64
 #   jammy libpam-cracklib -> noble libpam-pwquality
-# Exclusions for M1 POC (Nix resolver limitations with sysvinit-utils):
-#   - rng-tools (→ rng-tools-debian: depends on sysvinit-utils, which conflicts with systemd-sysv)
-#   - rsyslog variants (postinst tries start-stop-daemon before sysvinit-utils configured)
+# rng-tools appears twice in apply.sh (lines 10 and 18); de-duplicated here.
+# The rsyslog set is a separate `pkg_mgr install` in apply.sh (line 37).
 [
   "libssl-dev" "lsof" "strace" "bind9-host" "dnsutils" "tcpdump" "iputils-arping"
-  "curl" "wget" "bison" "libreadline6-dev"
+  "curl" "wget" "bison" "libreadline6-dev" "rng-tools"
   "libxml2" "libxml2-dev" "libxslt1.1" "libxslt1-dev" "zip" "unzip"
   "flex" "psmisc" "apparmor-utils" "iptables" "nftables" "sysstat"
   "rsync" "openssh-server" "traceroute" "libncurses5-dev" "quota"
@@ -21,8 +20,5 @@
   "xfsprogs" "gdisk" "chrony" "dbus" "nvme-cli" "fdisk"
   "ethtool" "libpam-pwquality" "gpg-agent" "libcurl4" "libcurl4-openssl-dev"
   "resolvconf" "net-tools" "ifupdown"
-  # rsyslog set excluded — postinst scripts have unresolved start-stop-daemon ordering
-  # dependency (tries to call /sbin/start-stop-daemon before sysvinit-utils is configured).
-  # BOSH can use `systemd-journald` as alternative; this is a Nix environment limitation.
-  # "rsyslog" "rsyslog-gnutls" "rsyslog-openssl" "rsyslog-relp"
+  "rsyslog" "rsyslog-gnutls" "rsyslog-openssl" "rsyslog-relp"
 ]
