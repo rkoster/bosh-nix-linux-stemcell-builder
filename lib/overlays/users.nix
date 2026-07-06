@@ -144,6 +144,7 @@ GSHADOW
       echo 'vcap:!:19000:0:99999:7:::' >> "$root/etc/shadow"
     mkdir -p "$root/home/vcap"
     chmod 700 "$root/home/vcap"
+    chown 1000:1000 "$root/home/vcap" 2>/dev/null || true
 
     # Inline ps1 asset (from bosh_users/assets/ps1.sh; inlined for reproducibility)
     mkdir -p "$root/etc/profile.d"
