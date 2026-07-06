@@ -13,6 +13,7 @@ let
     (import ../lib/overlays/sysctl-limits-env.nix { inherit stageAssets; })
     (import ../lib/overlays/sudoers-pam.nix { inherit stageAssets; })
     (import ../lib/overlays/rsyslog.nix { inherit stageAssets; })
+    (import ../lib/overlays/audit.nix { inherit stageAssets; })
   ];
 
   final = lib.foldl (acc: ov: applyOverlay {

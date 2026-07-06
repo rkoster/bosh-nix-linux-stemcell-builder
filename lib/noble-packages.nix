@@ -21,4 +21,5 @@
   "ethtool" "libpam-pwquality" "gpg-agent" "libcurl4" "libcurl4-openssl-dev"
   "resolvconf" "net-tools" "ifupdown"
   "rsyslog" "rsyslog-gnutls" "rsyslog-openssl" "rsyslog-relp"
+  "auditd"
 ]
