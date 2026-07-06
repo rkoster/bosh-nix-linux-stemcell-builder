@@ -59,6 +59,7 @@ vmTools.makeImageFromDebDist {
     # --removable writes /EFI/BOOT/BOOTX64.EFI, which OVMF always tries even
     # without a persisted NVRAM boot entry (required for fresh headless boots).
     grub-install --target x86_64-efi --removable
+    cp /boot/efi/EFI/ubuntu/grubx64.efi /boot/efi/EFI/BOOT/BOOTX64.EFI 2>/dev/null || true
 
     echo root:root | chpasswd
     CHROOT
