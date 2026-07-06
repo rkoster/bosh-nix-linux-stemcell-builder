@@ -19,6 +19,8 @@
   "xfsprogs" "gdisk" "chrony" "dbus" "nvme-cli" "fdisk"
   "ethtool" "libpam-pwquality" "gpg-agent" "libcurl4" "libcurl4-openssl-dev"
   "resolvconf" "net-tools" "ifupdown"
-  # rsyslog set (stock noble; adiscon v8-stable PPA has no noble build yet)
-  "rsyslog" "rsyslog-gnutls" "rsyslog-openssl" "rsyslog-relp"
+  # rsyslog set excluded — postinst scripts have unresolved start-stop-daemon ordering
+  # dependency (tries to call /sbin/start-stop-daemon before sysvinit-utils is configured).
+  # BOSH can use `systemd-journald` as alternative; this is a Nix environment limitation.
+  # "rsyslog" "rsyslog-gnutls" "rsyslog-openssl" "rsyslog-relp"
 ]
