@@ -4,13 +4,14 @@
 # read the identical lists — no drift.
 {
   # Build-only tooling in jammy's common base that a bootable image doesn't need.
-  dropFromBase = [ "g++" "make" "dpkg-dev" "pkg-config" "sysvinit" ];
+  dropFromBase = [ "g++" "make" "dpkg-dev" "pkg-config" ];
 
   # Minimal packages required to boot, plus a few runtime essentials.
   bootEssentials = [
     "systemd"               # init system
     "init-system-helpers"   # provides update-rc.d used by udev hooks
     "systemd-sysv"          # provides /sbin/init
+    "sysvinit-utils"        # provides start-stop-daemon
     "linux-image-generic"   # kernel
     "initramfs-tools"       # initramfs generation
     "e2fsprogs"             # initramfs fsck
