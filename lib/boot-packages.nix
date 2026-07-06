@@ -10,8 +10,7 @@
   bootEssentials = [
     "systemd"               # init system
     "init-system-helpers"   # provides update-rc.d used by udev hooks
-    "systemd-sysv"          # provides /sbin/init
-    "sysvinit-utils"        # provides start-stop-daemon
+    "systemd-sysv"          # provides /sbin/init AND sysvinit compatibility
     "linux-image-generic"   # kernel
     "initramfs-tools"       # initramfs generation
     "e2fsprogs"             # initramfs fsck
