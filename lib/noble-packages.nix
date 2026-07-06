@@ -5,10 +5,12 @@
 # Note Noble's 64-bit time_t (t64) ABI transition and PAM change:
 #   jammy libaio1        -> noble libaio1t64
 #   jammy libpam-cracklib -> noble libpam-pwquality
-# Duplicate "rng-tools" from the shell list is de-duplicated here.
+# Exclusions for M1 POC (Nix resolver limitations with sysvinit-utils):
+#   - rng-tools (→ rng-tools-debian: depends on sysvinit-utils, which conflicts with systemd-sysv)
+#   - rsyslog variants (postinst tries start-stop-daemon before sysvinit-utils configured)
 [
   "libssl-dev" "lsof" "strace" "bind9-host" "dnsutils" "tcpdump" "iputils-arping"
-  "curl" "wget" "bison" "libreadline6-dev" "rng-tools"
+  "curl" "wget" "bison" "libreadline6-dev"
   "libxml2" "libxml2-dev" "libxslt1.1" "libxslt1-dev" "zip" "unzip"
   "flex" "psmisc" "apparmor-utils" "iptables" "nftables" "sysstat"
   "rsync" "openssh-server" "traceroute" "libncurses5-dev" "quota"
