@@ -1,0 +1,6 @@
+source "https://rubygems.org"
+
+gem "rspec", "3.13.2"
+gem "rspec-its", "2.0.0"
+gem "serverspec", "2.42.2"
+gem "specinfra", "2.87.2"
