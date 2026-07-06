@@ -18,9 +18,9 @@ in
 
   # main/universe/multiverse indices. Hashes filled in Task 1.2.
   packagesLists = [
-    (fetchIndex "main" lib.fakeHash)
-    (fetchIndex "universe" lib.fakeHash)
-    (fetchIndex "multiverse" lib.fakeHash)
+    (fetchIndex "main" "0l94v46rh8q3m8maim1xq2qkagwrjkalcrilrdww599i22g1jsia")
+    (fetchIndex "universe" "16jr0mj275yzaii4khfh07hryf451k80hs6jl748qhwi3gx5g45s")
+    (fetchIndex "multiverse" "1sjh2wzbwvrxz098l6625igxb0lcdpkm4v9azhmvfjl6w07ld040")
   ];
 
   basePackages = vmTools.debDistros.ubuntu2204x86_64.packages;
