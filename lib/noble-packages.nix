@@ -1,0 +1,24 @@
+# Authoritative BOSH package set for ubuntu-noble.
+# Transcribed verbatim from:
+#   bosh-linux-stemcell-builder/stemcell_builder/stages/base_ubuntu_packages/apply.sh
+# on branch ubuntu-noble (HEAD 7170566ab).
+# Note Noble's 64-bit time_t (t64) ABI transition and PAM change:
+#   jammy libaio1        -> noble libaio1t64
+#   jammy libpam-cracklib -> noble libpam-pwquality
+# Duplicate "rng-tools" from the shell list is de-duplicated here.
+[
+  "libssl-dev" "lsof" "strace" "bind9-host" "dnsutils" "tcpdump" "iputils-arping"
+  "curl" "wget" "bison" "libreadline6-dev" "rng-tools"
+  "libxml2" "libxml2-dev" "libxslt1.1" "libxslt1-dev" "zip" "unzip"
+  "flex" "psmisc" "apparmor-utils" "iptables" "nftables" "sysstat"
+  "rsync" "openssh-server" "traceroute" "libncurses5-dev" "quota"
+  "libaio1t64" "gdb" "libcap2-bin" "libcap2-dev" "libbz2-dev"
+  "cmake" "uuid-dev" "libgcrypt-dev" "ca-certificates"
+  "mg" "htop" "module-assistant" "debhelper" "runit" "parted"
+  "cloud-guest-utils" "anacron" "software-properties-common"
+  "xfsprogs" "gdisk" "chrony" "dbus" "nvme-cli" "fdisk"
+  "ethtool" "libpam-pwquality" "gpg-agent" "libcurl4" "libcurl4-openssl-dev"
+  "resolvconf" "net-tools" "ifupdown"
+  # rsyslog set (stock noble; adiscon v8-stable PPA has no noble build yet)
+  "rsyslog" "rsyslog-gnutls" "rsyslog-openssl" "rsyslog-relp"
+]
