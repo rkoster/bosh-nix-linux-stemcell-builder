@@ -30,7 +30,10 @@ module ShelloutTypes
         fi
         chroot #{chroot_dir} /bin/bash -c #{inner.shellescape}
       SH
-      stdout, stderr, status = Open3.capture3("sudo", "/bin/bash", "-c", wrapper)
+      # Use bash and sudo from PATH (for Nix compatibility)
+      bash_path = `which bash`.strip
+      sudo_path = "/run/wrappers/bin/sudo"  # explicit path to host sudo with setuid
+      stdout, stderr, status = Open3.capture3(sudo_path, bash_path, "-c", wrapper)
       [stdout, stderr, status.exitstatus]
     end
 
