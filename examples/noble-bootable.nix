@@ -27,6 +27,11 @@ vmTools.makeImageFromDebDist {
     mkdir -p /mnt/{proc,dev,sys,boot/efi}
     ${util-linux}/bin/mount -t vfat "$disk"1 /mnt/boot/efi
     touch /mnt/.debug
+    
+    # Stub out files that sysvinit-utils postinst will try to move but don't exist yet.
+    # This prevents "mv: cannot stat" errors during package installation.
+    mkdir -p /mnt/sbin
+    touch /mnt/sbin/start-stop-daemon
   '';
 
   postInstall = ''
