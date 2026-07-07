@@ -15,6 +15,9 @@ stdenv.mkDerivation {
     ${script}
     # --------------------------------------------------------
 
+    # Ensure all files are readable for tar packing (fix any 0000 permissions)
+    find "$root" -perm /000 -exec chmod u+r {} \; 2>/dev/null || true
+
     mkdir -p $out
     tar --numeric-owner --one-file-system -C "$root" -czf $out/rootfs.tar.gz .
   '';

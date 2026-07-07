@@ -61,7 +61,7 @@ set mail-format {
 }
 EOF
     chmod 0600 "$root/var/vcap/monit/alerts.monitrc"
-    chown root:root "$root/var/vcap/monit/alerts.monitrc"
+    chown root:root "$root/var/vcap/monit/alerts.monitrc" 2>/dev/null || true
 
     # empty agent conf (overwritten by openstack-agent-settings overlay)
     echo '{}' > "$root/var/vcap/bosh/agent.json"

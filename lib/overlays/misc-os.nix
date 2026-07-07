@@ -30,7 +30,8 @@ EOF
       > "$root/etc/init/control-alt-delete.override"
 
     # clean_machine_id
+    chmod 644 "$root/etc/machine-id" || true
     echo "" > "$root/etc/machine-id"
-    rm -f "$root/var/lib/dbus/machine-id"
+    rm -f "$root/var/lib/dbus/machine-id" || true
   '';
 }

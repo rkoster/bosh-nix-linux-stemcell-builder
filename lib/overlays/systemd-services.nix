@@ -91,10 +91,10 @@ EOF
       "$root/etc/systemd/system/multi-user.target.wants/firstboot.service"
 
     # base_file_permission: gshadow and shadow (setuid binaries handled separately)
-    chmod 0000 "$root/etc/gshadow"
-    chown root:root "$root/etc/gshadow"
+    chmod 0000 "$root/etc/gshadow" || true
+    chown root:root "$root/etc/gshadow" 2>/dev/null || true
 
-    chmod 0000 "$root/etc/shadow"
-    chown root:root "$root/etc/shadow"
+    chmod 0000 "$root/etc/shadow" || true
+    chown root:root "$root/etc/shadow" 2>/dev/null || true
   '';
 }
