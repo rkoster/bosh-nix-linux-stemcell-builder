@@ -14,7 +14,8 @@
     "linux-image-generic"   # kernel
     "initramfs-tools"       # initramfs generation
     "e2fsprogs"             # initramfs fsck
-    "grub-efi"              # boot loader
+    "grub-efi"              # boot loader (EFI x86_64-efi target)
+    "grub-pc-bin"           # BIOS i386-pc bootloader (dual-boot support)
     "apt"                   # package manager (for later in-image work)
     "ncurses-base"          # terminfo
     "dbus"                  # networkctl / logind
