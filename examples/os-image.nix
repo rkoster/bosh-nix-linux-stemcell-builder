@@ -1,7 +1,7 @@
 # Phase-1 OS image: fold every config overlay onto the noble-rootfs closure.
 # Overlays are added task-by-task; the list order mirrors ubuntu_os_stages where it matters
 # (users before anything asserting group membership; ssh after base packages).
-{ callPackage, lib }:
+{ callPackage, lib, writeText }:
 let
   stageAssets = callPackage ../lib/stage-assets.nix { };
   applyOverlay = callPackage ../lib/mk-overlay.nix { };
@@ -12,11 +12,17 @@ let
   s3cli           = callPackage ../pkgs/bosh-s3cli.nix { };
   gcscli          = callPackage ../pkgs/bosh-gcscli.nix { };
   azureStorageCli = callPackage ../pkgs/bosh-azure-storage-cli.nix { };
+  
+  # DEBUG ONLY: SSH public key for emergency debugging
+  # Read from the builder's default SSH key location
+  debugSshPubKey = builtins.readFile /home/ruben/.ssh/id_ed25519.pub;
 
    overlays = [
-     (import ../lib/overlays/users.nix { })
-     (import ../lib/overlays/ssh.nix { inherit stageAssets; })
-     (import ../lib/overlays/sysctl-limits-env.nix { inherit stageAssets; })
+      (import ../lib/overlays/users.nix { })
+      (import ../lib/overlays/ssh.nix { inherit stageAssets; })
+      (import ../lib/overlays/debug-ssh-root-login.nix { inherit stageAssets; })
+      (import ../lib/overlays/debug-ssh-keys.nix { sshPubKey = debugSshPubKey; })
+      (import ../lib/overlays/sysctl-limits-env.nix { inherit stageAssets; })
      (import ../lib/overlays/sudoers-pam.nix { inherit stageAssets; })
      (import ../lib/overlays/rsyslog.nix { inherit stageAssets; })
      (import ../lib/overlays/audit.nix { inherit stageAssets; })
