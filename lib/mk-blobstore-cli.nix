@@ -11,6 +11,12 @@
 , subPackages ? [ "." ]
 , ldflagsVersionVar ? null   # e.g. "main.version"; null = no version embed
 }:
+let
+  # Extract the CLI name from pname by removing "bosh-" prefix if present
+  cliName = if lib.hasPrefix "bosh-" pname
+    then lib.removePrefix "bosh-" pname
+    else pname;
+in
 buildGoModule {
   inherit pname version vendorHash subPackages;
   src = fetchFromGitHub { inherit owner repo rev hash; };
@@ -19,8 +25,17 @@ buildGoModule {
   ldflags =
     lib.optionals (ldflagsVersionVar != null)
       [ "-s" "-w" "-X" "${ldflagsVersionVar}=${version}" ];
+  postInstall = lib.optionalString (subPackages != [ "." ])
+    ''
+      # When subPackages is used, the binary is named after the last component of the package path.
+      # Rename it to the CLI name (pname with "bosh-" prefix removed) for consistency.
+      for bin in $out/bin/*; do
+        [ -f "$bin" ] && mv "$bin" "$out/bin/${cliName}"
+      done
+    '';
   meta = {
     description = "BOSH blobstore CLI: ${pname}";
     homepage = "https://github.com/${owner}/${repo}";
   };
 }
+
