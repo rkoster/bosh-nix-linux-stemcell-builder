@@ -7,6 +7,11 @@ let
   applyOverlay = callPackage ../lib/mk-overlay.nix { };
   base = callPackage ./noble-rootfs.nix { };
 
+  davcli          = callPackage ../pkgs/bosh-davcli.nix { };
+  s3cli           = callPackage ../pkgs/bosh-s3cli.nix { };
+  gcscli          = callPackage ../pkgs/bosh-gcscli.nix { };
+  azureStorageCli = callPackage ../pkgs/bosh-azure-storage-cli.nix { };
+
   overlays = [
     (import ../lib/overlays/users.nix { })
     (import ../lib/overlays/ssh.nix { inherit stageAssets; })
@@ -16,6 +21,9 @@ let
     (import ../lib/overlays/audit.nix { inherit stageAssets; })
     (import ../lib/overlays/misc-os.nix { inherit stageAssets; })
     (import ../lib/overlays/systemd-services.nix { inherit stageAssets; })
+    (import ../lib/overlays/blobstore-clis.nix {
+      inherit davcli s3cli gcscli azureStorageCli;
+    })
   ];
 
   final = lib.foldl (acc: ov: applyOverlay {
