@@ -38,8 +38,8 @@ stdenv.mkDerivation {
     # Copy qcow2 to root.img (qcow2 file named as root.img, per BOSH OpenStack convention)
     ${coreutils}/bin/cp ${bootableDisk} root.img
     
-    # Create inner image tarball
-    ${gnutar}/bin/tar -cf image root.img
+    # Create inner image tarball (gzip-compressed, as required by BOSH CPI)
+    ${gnutar}/bin/tar -czf image root.img
     
     # Compute SHA-1 of the inner image tarball (NOT root.img!)
     # This value goes into stemcell.MF

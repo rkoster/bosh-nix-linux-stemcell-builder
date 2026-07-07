@@ -166,7 +166,7 @@ log "Stemcell size: $(du -h "$STEMCELL_PATH" | cut -f1)"
 # Step 4: Upload stemcell
 log_step "Step 4: Uploading stemcell to director"
 
-if ! run_cmd bosh upload-stemcell "$STEMCELL_PATH" --skip-if-exists; then
+if ! run_cmd bosh upload-stemcell "$STEMCELL_PATH" --fix; then
   log_error "Failed to upload stemcell"
   exit 1
 fi
@@ -181,7 +181,7 @@ if [[ ! -f "./nix-stemcell-poc.yml" ]]; then
   exit 1
 fi
 
-if ! run_cmd bosh -d nix-stemcell-poc deploy ./nix-stemcell-poc.yml; then
+if ! run_cmd bosh -d nix-stemcell-poc deploy ./nix-stemcell-poc.yml -n; then
   log_error "Deployment failed"
   exit 1
 fi
