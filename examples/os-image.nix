@@ -13,20 +13,21 @@ let
   gcscli          = callPackage ../pkgs/bosh-gcscli.nix { };
   azureStorageCli = callPackage ../pkgs/bosh-azure-storage-cli.nix { };
 
-  overlays = [
-    (import ../lib/overlays/users.nix { })
-    (import ../lib/overlays/ssh.nix { inherit stageAssets; })
-    (import ../lib/overlays/sysctl-limits-env.nix { inherit stageAssets; })
-    (import ../lib/overlays/sudoers-pam.nix { inherit stageAssets; })
-    (import ../lib/overlays/rsyslog.nix { inherit stageAssets; })
-    (import ../lib/overlays/audit.nix { inherit stageAssets; })
-    (import ../lib/overlays/misc-os.nix { inherit stageAssets; })
-    (import ../lib/overlays/systemd-services.nix { inherit stageAssets; })
-    (import ../lib/overlays/agent.nix { inherit bosh-agent; })
-    (import ../lib/overlays/blobstore-clis.nix {
-      inherit davcli s3cli gcscli azureStorageCli;
-    })
-  ];
+   overlays = [
+     (import ../lib/overlays/users.nix { })
+     (import ../lib/overlays/ssh.nix { inherit stageAssets; })
+     (import ../lib/overlays/sysctl-limits-env.nix { inherit stageAssets; })
+     (import ../lib/overlays/sudoers-pam.nix { inherit stageAssets; })
+     (import ../lib/overlays/rsyslog.nix { inherit stageAssets; })
+     (import ../lib/overlays/audit.nix { inherit stageAssets; })
+     (import ../lib/overlays/misc-os.nix { inherit stageAssets; })
+     (import ../lib/overlays/systemd-services.nix { inherit stageAssets; })
+     (import ../lib/overlays/agent.nix { inherit bosh-agent; })
+     (import ../lib/overlays/blobstore-clis.nix {
+       inherit davcli s3cli gcscli azureStorageCli;
+     })
+     (import ../lib/overlays/openstack-agent-settings.nix { })
+   ];
 
   final = lib.foldl (acc: ov: applyOverlay {
     base = acc; inherit (ov) name script;
