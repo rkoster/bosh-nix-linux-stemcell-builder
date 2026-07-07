@@ -15,11 +15,15 @@
   outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } ({ lib, ... }: {
     systems = [ "x86_64-linux" ];
     perSystem = { pkgs, ... }: {
-      # One package per file in ./examples (mirrors the samples repo layout).
-      packages = lib.mapAttrs' (name: _type: {
-        name = lib.replaceStrings [ ".nix" ] [ "" ] name;
-        value = pkgs.callPackage ./examples/${name} { };
-      }) (builtins.readDir ./examples);
+      # One package per file in ./examples and ./pkgs.
+      packages =
+        let
+          mapDir = dir: lib.mapAttrs' (name: _type: {
+            name = lib.replaceStrings [ ".nix" ] [ "" ] name;
+            value = pkgs.callPackage (dir + "/${name}") { };
+          }) (builtins.readDir dir);
+        in
+        (mapDir ./examples) // (mapDir ./pkgs);
 
       devShells.default = pkgs.mkShell {
         # nix-prefetch-url ships with Nix itself, so no extra package needed.
