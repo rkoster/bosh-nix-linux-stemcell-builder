@@ -7,6 +7,7 @@
 , coreutils
 , gnutar
 , gzip
+, pigz
 , qemu
 }:
 { bootableDisk
@@ -26,7 +27,7 @@ in
 stdenv.mkDerivation {
   name = "stemcell-packaging";
   
-  buildInputs = [ coreutils gnutar gzip qemu ];
+  buildInputs = [ coreutils gnutar gzip pigz qemu ];
   
   buildCommand = ''
     set -exuo pipefail
@@ -38,8 +39,8 @@ stdenv.mkDerivation {
     # Copy qcow2 to root.img (qcow2 file named as root.img, per BOSH OpenStack convention)
     ${coreutils}/bin/cp ${bootableDisk} root.img
     
-    # Create inner image tarball (gzip-compressed, as required by BOSH CPI)
-    ${gnutar}/bin/tar -czf image root.img
+    # Create inner image tarball (pigz-compressed, as required by BOSH CPI)
+    ${gnutar}/bin/tar -cf - root.img | ${pigz}/bin/pigz -1 > image
     
     # Compute SHA-1 of the inner image tarball (NOT root.img!)
     # This value goes into stemcell.MF
