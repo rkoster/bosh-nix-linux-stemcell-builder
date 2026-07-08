@@ -44,5 +44,24 @@ EOF
 
 console
 EOF
+
+    # base_ssh: /etc/issue and /etc/issue.net BOSH warning banner (CIS-11.1)
+    # Both files must contain the unauthorized-use warning; sshd_config Banner
+    # directive points to /etc/issue.net.
+    BANNER_TEXT='Unauthorized use is strictly prohibited. All access and activity
+is subject to logging and monitoring.'
+    printf '%s\n' "$BANNER_TEXT" > "$root/etc/issue"
+    chmod 0644 "$root/etc/issue"
+    chown root:root "$root/etc/issue" 2>/dev/null || true
+    printf '%s\n' "$BANNER_TEXT" > "$root/etc/issue.net"
+    chmod 0644 "$root/etc/issue.net"
+    chown root:root "$root/etc/issue.net" 2>/dev/null || true
+
+    # base_ssh: empty /etc/motd (CIS-11.1) and disable motd-news
+    : > "$root/etc/motd"
+    chmod 0644 "$root/etc/motd"
+    chown root:root "$root/etc/motd" 2>/dev/null || true
+    mkdir -p "$root/etc/default"
+    printf 'ENABLED=0\n' > "$root/etc/default/motd-news"
   '';
 }

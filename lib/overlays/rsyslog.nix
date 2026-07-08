@@ -223,6 +223,18 @@ done
 WAITSCRIPT
     chmod 755 "$root/usr/local/bin/wait_for_var_log_to_be_mounted"
 
+    # Pre-create log files referenced by rsyslog.d/50-default.conf so that
+    # the os_image spec "secures rsyslog.conf-referenced files" test can stat
+    # them.  rsyslog owns these files (uid/gid of syslog account).
+    # In the tarball, fakeroot records the syslog uid/gid (102:102 as per
+    # the group/passwd written by the users overlay).
+    mkdir -p "$root/var/log"
+    for logfile in auth.log syslog cron.log daemon.log kern.log bosh-agent.log; do
+      touch "$root/var/log/$logfile"
+      chmod 0600 "$root/var/log/$logfile"
+      chown 102:102 "$root/var/log/$logfile" 2>/dev/null || true
+    done
+
     # Create rsyslog.service.d override
     mkdir -p "$root/etc/systemd/system/rsyslog.service.d"
     cat > "$root/etc/systemd/system/rsyslog.service.d/00-override.conf" <<'SYSLOGOVERRIDE'

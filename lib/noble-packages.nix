@@ -22,4 +22,7 @@
    "resolvconf" "net-tools" "ifupdown"
    "rsyslog" "rsyslog-gnutls" "rsyslog-openssl" "rsyslog-relp"
    "auditd" "sudo"  # Priority: important; needed for bosh_sudoers passwordless escalation
+   "cron"           # spec: crontab command must exist + cron.service enabled
+   "systemd-timesyncd"  # spec: /etc/passwd must include systemd-timesync user (uid 996)
+   "grub2"          # spec: grub2 package must be installed + /boot/grub/gfxblacklist.txt
 ]

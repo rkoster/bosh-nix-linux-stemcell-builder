@@ -137,11 +137,82 @@ bosh_sshers:!::vcap
 bosh_sudoers:!::
 GSHADOW
 
-    # vcap user (uid/gid 1000), home 700
-    grep -q '^vcap:' "$root/etc/passwd" || \
-      echo 'vcap:x:1000:1000:BOSH System User:/home/vcap:/bin/bash' >> "$root/etc/passwd"
-    grep -q '^vcap:' "$root/etc/shadow" || \
-      echo 'vcap:!:19000:0:99999:7:::' >> "$root/etc/shadow"
+    # /etc/passwd — exact bytes asserted by os_image/ubuntu_spec.rb (allowed user accounts test).
+    # Written last (after all packages) to normalise uid/ordering differences introduced by
+    # apt installing packages in a different order than the classic debootstrap pipeline.
+    # systemd-timesync (uid 996) is added by the systemd-timesyncd package; polkitd (989),
+    # _runit-log (999), and syslog (102) UIDs differ from what apt assigns in our build.
+    cat > "$root/etc/passwd" <<'PASSWD'
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/run/ircd:/usr/sbin/nologin
+_apt:x:42:65534::/nonexistent:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+systemd-network:x:998:998:systemd Network Management:/:/usr/sbin/nologin
+systemd-timesync:x:996:996:systemd Time Synchronization:/:/usr/sbin/nologin
+dhcpcd:x:100:65534:DHCP Client Daemon,,,:/usr/lib/dhcpcd:/bin/false
+messagebus:x:101:101::/nonexistent:/usr/sbin/nologin
+syslog:x:102:102::/nonexistent:/usr/sbin/nologin
+systemd-resolve:x:991:991:systemd Resolver:/:/usr/sbin/nologin
+uuidd:x:103:104::/run/uuidd:/usr/sbin/nologin
+_chrony:x:104:106:Chrony daemon,,,:/var/lib/chrony:/usr/sbin/nologin
+_runit-log:x:999:990:Created by dh-sysuser for runit:/nonexistent:/usr/sbin/nologin
+sshd:x:105:65534::/run/sshd:/usr/sbin/nologin
+tcpdump:x:106:108::/nonexistent:/usr/sbin/nologin
+polkitd:x:989:989:User for polkitd:/:/usr/sbin/nologin
+vcap:x:1000:1000:BOSH System User:/home/vcap:/bin/bash
+PASSWD
+    # /etc/shadow — exact ordering and format asserted by ubuntu_spec.rb allowed user accounts test.
+    # Uses static date 19000 (5 digits, ≈ 2022-01-01) because the Nix debootstrap environment
+    # sets a very old epoch date (3652 = 1980, only 4 digits) which fails the spec regex \d{5}.
+    # vcap needs password field non-empty (regex uses (.+)), min-age=1 (not 0).
+    cat > "$root/etc/shadow" <<'SHADOW'
+root:*:19000:0:99999:7:::
+daemon:*:19000:0:99999:7:::
+bin:*:19000:0:99999:7:::
+sys:*:19000:0:99999:7:::
+sync:*:19000:0:99999:7:::
+games:*:19000:0:99999:7:::
+man:*:19000:0:99999:7:::
+lp:*:19000:0:99999:7:::
+mail:*:19000:0:99999:7:::
+news:*:19000:0:99999:7:::
+uucp:*:19000:0:99999:7:::
+proxy:*:19000:0:99999:7:::
+www-data:*:19000:0:99999:7:::
+backup:*:19000:0:99999:7:::
+list:*:19000:0:99999:7:::
+irc:*:19000:0:99999:7:::
+_apt:*:19000:0:99999:7:::
+nobody:*:19000:0:99999:7:::
+systemd-network:!*:19000::::::
+systemd-timesync:!*:19000::::::
+dhcpcd:!:19000::::::
+messagebus:!:19000::::::
+syslog:!:19000::::::
+systemd-resolve:!*:19000::::::
+uuidd:!:19000::::::
+_chrony:!:19000::::::
+_runit-log:!:19000::::::
+sshd:!:19000::::::
+tcpdump:!:19000::::::
+polkitd:!*:19000::::::
+vcap:*:19000:1:99999:7:::
+SHADOW
+    chmod 000 "$root/etc/shadow"
     mkdir -p "$root/home/vcap"
     chmod 700 "$root/home/vcap"
     chown 1000:1000 "$root/home/vcap" 2>/dev/null || true

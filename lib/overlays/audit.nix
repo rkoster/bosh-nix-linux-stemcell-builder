@@ -93,7 +93,7 @@
 -a always,exit -F arch=b64 -S creat -S open -S open_by_handle_at -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=500 -F auid!=4294967295 -k access
 -a always,exit -F arch=b32 -S creat -S open -S open_by_handle_at -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=500 -F auid!=4294967295 -k access
 
-# Record use of additional binaries
+# Record use of additional binaries (perm=x first — required by os_image_shared_examples.rb:679-703)
 -a always,exit -F perm=x -F auid>=500 -F auid!=4294967295 -F path=/sbin/unix_chkpwd -k privileged
 -a always,exit -F perm=x -F auid>=500 -F auid!=4294967295 -F path=/sbin/mount.nfs -k privileged
 -a always,exit -F perm=x -F auid>=500 -F auid!=4294967295 -F path=/usr/sbin/pam_timestamp_check -k privileged
@@ -118,6 +118,26 @@
 -a always,exit -F perm=x -F auid>=500 -F auid!=4294967295 -F path=/usr/sbin/postqueue -k privileged
 -a always,exit -F perm=x -F auid>=500 -F auid!=4294967295 -F path=/usr/sbin/usernetctl -k privileged
 -a always,exit -F perm=x -F auid>=500 -F auid!=4294967295 -F path=/usr/sbin/service -k privileged
+
+# CIS-8.1.12: audit all SUID/SGID binaries (path= first with $ anchor — required by
+# os_image_shared_examples.rb:737-751 which dynamically finds SUID/SGID binaries and
+# checks for ^-a always,exit -F path=<binary> -F perm=x ... -k privileged$)
+-a always,exit -F path=/usr/bin/sudo -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/umount -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/newgrp -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/chsh -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/mount -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/su -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/passwd -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/chfn -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/gpasswd -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/ssh-agent -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/expiry -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/chage -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/bin/crontab -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/sbin/pam_extrausers_chkpwd -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/usr/sbin/unix_chkpwd -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
+-a always,exit -F path=/sbin/unix_chkpwd -F perm=x -F auid>=500 -F auid!=4294967295 -k privileged
 
 # Record execution of privileged function
 -a always,exit -F arch=b64 -S execve -C uid!=euid -F key=execpriv
@@ -181,10 +201,8 @@ AUDITOVERRIDE
     # Use fakeroot to ensure tar records uid/gid 0
     mkdir -p "$root/var/log/audit"
     chmod 750 "$root/var/log/audit"
-
-    # Ensure auditd can write to /var/log/audit
-    # stat checks in the chroot will verify ownership via tar metadata
-    # For the tarball to record uid/gid 0, we use fakeroot in mk-apply-overlays.nix
+    # Explicitly set group to root; auditd's postinst may create this dir with group adm.
+    chown root:root "$root/var/log/audit" 2>/dev/null || true
 
     # Create /var/vcap/bosh/bin directory and copy the logging/auditing startup script
     mkdir -p "$root/var/vcap/bosh/bin"

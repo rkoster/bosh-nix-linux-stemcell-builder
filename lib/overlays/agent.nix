@@ -147,5 +147,15 @@ EOF
       "$root/etc/crontab" "$root/etc/cron.hourly" "$root/etc/cron.daily" \
       "$root/etc/cron.weekly" "$root/etc/cron.monthly" "$root/etc/cron.d" \
       2>/dev/null || true
+
+    # bosh_ntp/chrony: sync-time script (stig: V-38620 V-38621)
+    # Checked by both "every OS image installed binaries" and "an os with chrony" specs.
+    cat > "$root/var/vcap/bosh/bin/sync-time" <<'SYNCTIME'
+#!/bin/bash
+chronyc reload sources
+chronyc waitsync 10
+SYNCTIME
+    chmod 0755 "$root/var/vcap/bosh/bin/sync-time"
+    chown 0:0 "$root/var/vcap/bosh/bin/sync-time" 2>/dev/null || true
   '';
 }

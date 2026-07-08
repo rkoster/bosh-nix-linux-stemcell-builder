@@ -38,8 +38,15 @@ stdenv.mkDerivation {
     ${runOverlays}
     # ------------------------------------------------------------------
 
-    # Ensure all files are readable for tar packing (fix any 0000 permissions)
-    find "$root" -perm /000 -exec chmod u+r {} \; 2>/dev/null || true
+    # Note: do NOT add a blanket "chmod u+r" here.  fakeroot's chmod only
+    # updates the fakeroot metadata database; the real file permissions are
+    # never changed.  tar reads files via the real permissions (always
+    # accessible) and records the fakeroot-reported modes in the archive,
+    # so mode-0000 security files (gshadow, shadow) are correctly packed
+    # without any workaround.  A previous "-perm /000 -exec chmod u+r"
+    # invocation used the wrong find predicate (-perm /000 with mask 000
+    # matches ALL files) and silently reset every file to at least mode 0400,
+    # breaking the gshadow/shadow security-mode tests.
 
     mkdir -p "$out"
     tar --numeric-owner --one-file-system -C "$root" -cf - . | pigz -1 > "$out/rootfs.tar.gz"

@@ -20,8 +20,11 @@ WantedBy=multi-user.target
 EOF
 
     # bosh_monit: enable monit.service
-    mkdir -p "$root/lib/systemd/system/multi-user.target.wants"
-    ln -sf /lib/systemd/system/monit.service "$root/lib/systemd/system/multi-user.target.wants/monit.service"
+    # Create the want symlink in /etc/systemd/system/ (mirrors what `systemctl enable`
+    # produces; symlinks in /lib/systemd/system/ are considered "static" by systemctl
+    # is-enabled and are NOT reported as "enabled").
+    mkdir -p "$root/etc/systemd/system/multi-user.target.wants"
+    ln -sf /lib/systemd/system/monit.service "$root/etc/systemd/system/multi-user.target.wants/monit.service"
 
     # bosh_ntp: chrony drop-in override (prevent mount locking)
     mkdir -p "$root/etc/systemd/system/chronyd.service.d"

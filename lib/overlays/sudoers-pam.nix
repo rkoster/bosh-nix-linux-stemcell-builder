@@ -9,6 +9,9 @@
   name = "sudoers-pam";
   script = ''
     # bosh_sudoers: Append includedir to sudoers and create bosh_sudoers sudoers.d file
+    # Also add the rule directly to /etc/sudoers so that spec tests checking
+    # /etc/sudoers content (not just the included directory) find the rule.
+    echo '%bosh_sudoers ALL=(ALL) NOPASSWD: ALL' >> "$root/etc/sudoers"
     echo '#includedir /etc/sudoers.d' >> "$root/etc/sudoers"
     mkdir -p "$root/etc/sudoers.d"
     cat > "$root/etc/sudoers.d/bosh_sudoers" <<'SUDOERS'
