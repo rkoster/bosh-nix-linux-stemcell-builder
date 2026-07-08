@@ -40,6 +40,8 @@
           # native gem build + serverspec runtime deps
           gcc gnumake libyaml openssl pkg-config
           gnutar gzip sudo
+          # chroot backend: mount/mountpoint/umount from util-linux; mkdir/chroot from coreutils
+          util-linux coreutils
         ];
         shellHook = ''
           export BUNDLE_PATH="$PWD/.bundle"

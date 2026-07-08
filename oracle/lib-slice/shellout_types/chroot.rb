@@ -23,7 +23,12 @@ module ShelloutTypes
       cmd.unshift("mknod -m 666 /dev/urandom c 1 9 2>/dev/null;")
       cmd.unshift("mknod -m 666 /dev/random c 1 8 2>/dev/null;")
       inner = cmd.join(" ")
+      # Embed the calling process's PATH so it survives sudo's env_reset.
+      # Without this, sudo resets PATH to a minimal set that omits Nix store
+      # paths, causing mkdir/mount/chroot to be "not found".
+      embedded_path = ENV.fetch("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
       wrapper = <<~SH.strip
+        export PATH="#{embedded_path}"
         if ! mountpoint -q #{chroot_dir}/proc 2>/dev/null; then
           mkdir -p #{chroot_dir}/proc
           mount -t proc proc #{chroot_dir}/proc
