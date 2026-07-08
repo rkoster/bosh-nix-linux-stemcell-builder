@@ -184,7 +184,7 @@ AUDITOVERRIDE
 
     # Ensure auditd can write to /var/log/audit
     # stat checks in the chroot will verify ownership via tar metadata
-    # For the tarball to record uid/gid 0, we use fakeroot in mk-overlay.nix
+    # For the tarball to record uid/gid 0, we use fakeroot in mk-apply-overlays.nix
 
     # Create /var/vcap/bosh/bin directory and copy the logging/auditing startup script
     mkdir -p "$root/var/vcap/bosh/bin"
