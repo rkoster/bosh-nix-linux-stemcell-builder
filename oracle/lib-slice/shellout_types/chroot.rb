@@ -22,13 +22,13 @@ module ShelloutTypes
     def run(*cmd)
       cmd.unshift("mknod -m 666 /dev/urandom c 1 9 2>/dev/null;")
       cmd.unshift("mknod -m 666 /dev/random c 1 8 2>/dev/null;")
+      # Reset PATH to standard Ubuntu locations before running anything inside the
+      # chroot.  Without this, the calling process's PATH (full Nix store paths on
+      # NixOS) is inherited by the inner bash, but those paths don't exist inside
+      # the Ubuntu rootfs, so every command in the suite is "not found".
+      cmd.unshift("export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin;")
       inner = cmd.join(" ")
-      # Embed the calling process's PATH so it survives sudo's env_reset.
-      # Without this, sudo resets PATH to a minimal set that omits Nix store
-      # paths, causing mkdir/mount/chroot to be "not found".
-      embedded_path = ENV.fetch("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
       wrapper = <<~SH.strip
-        export PATH="#{embedded_path}"
         if ! mountpoint -q #{chroot_dir}/proc 2>/dev/null; then
           mkdir -p #{chroot_dir}/proc
           mount -t proc proc #{chroot_dir}/proc
