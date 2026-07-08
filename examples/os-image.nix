@@ -4,7 +4,7 @@
 { callPackage, lib, writeText }:
 let
   stageAssets = callPackage ../lib/stage-assets.nix { };
-  applyOverlay = callPackage ../lib/mk-overlay.nix { };
+  applyOverlays = callPackage ../lib/mk-apply-overlays.nix { };
   base = callPackage ./noble-rootfs.nix { };
 
   bosh-agent      = callPackage ../pkgs/bosh-agent.nix { };
@@ -14,15 +14,20 @@ let
   gcscli          = callPackage ../pkgs/bosh-gcscli.nix { };
   azureStorageCli = callPackage ../pkgs/bosh-azure-storage-cli.nix { };
   
-  # DEBUG ONLY: SSH public key for emergency debugging
-  # Read from the builder's default SSH key location
-  debugSshPubKey = builtins.readFile /home/ruben/.ssh/id_ed25519.pub;
+  # DEBUG ONLY: SSH public key for emergency debugging.
+  # Read from the builder's default SSH key location. Only evaluated (and thus
+  # only forcing `--impure`) when the debug-ssh-keys overlay below is enabled.
+  # debugSshPubKey = builtins.readFile /home/ruben/.ssh/id_ed25519.pub;
 
    overlays = [
       (import ../lib/overlays/users.nix { })
       (import ../lib/overlays/ssh.nix { inherit stageAssets; })
-      (import ../lib/overlays/debug-ssh-root-login.nix { inherit stageAssets; })
-      (import ../lib/overlays/debug-ssh-keys.nix { sshPubKey = debugSshPubKey; })
+      # DEBUG ONLY (disabled): emergency root-SSH access. These overlays rewrite
+      # sshd_config to `AllowUsers root vcap`, which blocks the agent's ephemeral
+      # `bosh ssh` users. Re-enable (and uncomment debugSshPubKey above) only for
+      # hands-on debugging of a broken VM.
+      # (import ../lib/overlays/debug-ssh-root-login.nix { inherit stageAssets; })
+      # (import ../lib/overlays/debug-ssh-keys.nix { sshPubKey = debugSshPubKey; })
       (import ../lib/overlays/sysctl-limits-env.nix { inherit stageAssets; })
      (import ../lib/overlays/sudoers-pam.nix { inherit stageAssets; })
      (import ../lib/overlays/rsyslog.nix { inherit stageAssets; })
@@ -36,9 +41,7 @@ let
      (import ../lib/overlays/openstack-agent-settings.nix { })
    ];
 
-  final = lib.foldl (acc: ov: applyOverlay {
-    base = acc; inherit (ov) name script;
-  }) base overlays;
+   final = applyOverlays { inherit base overlays; };
 in
 # Re-expose as os-image.tgz for the oracle harness.
 final
