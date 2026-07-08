@@ -18,8 +18,8 @@
   "mg" "htop" "module-assistant" "debhelper" "runit" "parted"
   "cloud-guest-utils" "anacron" "software-properties-common"
   "xfsprogs" "gdisk" "chrony" "dbus" "nvme-cli" "fdisk"
-  "ethtool" "libpam-pwquality" "gpg-agent" "libcurl4" "libcurl4-openssl-dev"
-  "resolvconf" "net-tools" "ifupdown"
-  "rsyslog" "rsyslog-gnutls" "rsyslog-openssl" "rsyslog-relp"
-  "auditd"
+   "ethtool" "libpam-pwquality" "gpg-agent" "libcurl4" "libcurl4-openssl-dev"
+   "resolvconf" "net-tools" "ifupdown"
+   "rsyslog" "rsyslog-gnutls" "rsyslog-openssl" "rsyslog-relp"
+   "auditd" "sudo"  # Priority: important; needed for bosh_sudoers passwordless escalation
 ]
