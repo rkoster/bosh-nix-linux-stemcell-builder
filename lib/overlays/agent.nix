@@ -1,7 +1,7 @@
 # Reproduces the upstream `bosh_go_agent` stage using the source-built agent:
 # binary + systemd unit + rc + monit alerts + agent.json placeholder +
 # log symlink + cron/at hardening.
-{ bosh-agent }:
+{ bosh-agent, monit }:
 {
   name = "agent";
   script = ''
@@ -13,6 +13,35 @@
     install -m 0755 ${bosh-agent}/bin/main "$root/var/vcap/bosh/bin/bosh-agent"
     ln -f "$root/var/vcap/bosh/bin/bosh-agent" \
           "$root/var/vcap/bosh/etc/bosh-enable-monit-access"
+    # `install` leaves the binary owned by the build user; under fakeroot only
+    # explicit chowns record uid 0, so force root ownership (real stemcell has
+    # /var/vcap/bosh/bin/bosh-agent as root:root). The hardlink shares the inode.
+    chown 0:0 "$root/var/vcap/bosh/bin/bosh-agent"
+
+    # monit 5.2.5 (static): the process supervisor the agent drives over its
+    # 127.0.0.1:2822 HTTP interface. Reproduces bosh_monit stage:
+    #   - install the binary to /var/vcap/bosh/bin/monit
+    #   - install monitrc (0700) to /var/vcap/bosh/etc/monitrc
+    #   - seed /var/vcap/monit/empty.monitrc so monit's `include` glob is
+    #     non-empty (monit refuses to start otherwise)
+    install -m 0755 ${monit}/bin/monit "$root/var/vcap/bosh/bin/monit"
+    chown 0:0 "$root/var/vcap/bosh/bin/monit"
+
+    cat > "$root/var/vcap/bosh/etc/monitrc" <<'EOF'
+set daemon 10
+set logfile /var/vcap/monit/monit.log
+
+set httpd port 2822 and use address 127.0.0.1
+  allow cleartext /var/vcap/monit/monit.user
+
+include /var/vcap/monit/*.monitrc
+include /var/vcap/monit/job/*.monitrc
+EOF
+    chmod 0700 "$root/var/vcap/bosh/etc/monitrc"
+    chown 0:0 "$root/var/vcap/bosh/etc/monitrc"
+
+    touch "$root/var/vcap/monit/empty.monitrc"
+    chown 0:0 "$root/var/vcap/monit/empty.monitrc"
 
     # bosh-agent-rc
     cat > "$root/var/vcap/bosh/bin/bosh-agent-rc" <<'EOF'
@@ -53,11 +82,11 @@ set eventqueue
 set mail-format {
   from: monit@localhost
   subject: Monit Alert
-  message: Service: \$SERVICE
-  Event: \$EVENT
-  Action: \$ACTION
-  Date: \$DATE
-  Description: \$DESCRIPTION
+  message: Service: $SERVICE
+  Event: $EVENT
+  Action: $ACTION
+  Date: $DATE
+  Description: $DESCRIPTION
 }
 EOF
     chmod 0600 "$root/var/vcap/monit/alerts.monitrc"
@@ -65,6 +94,9 @@ EOF
 
     # empty agent conf (overwritten by openstack-agent-settings overlay)
     echo '{}' > "$root/var/vcap/bosh/agent.json"
+
+    # platform name consumed by bosh-agent.service `-P $(cat .../operating_system)`
+    echo 'ubuntu' > "$root/var/vcap/bosh/etc/operating_system"
 
     # cache dir used by agent/init/create-env
     mkdir -p "$root/var/vcap/micro_bosh/data/cache"
@@ -78,9 +110,9 @@ After=network.target
 
 [Service]
 WorkingDirectory=/var/vcap/bosh
-ExecStart=/bin/bash -c 'PATH=/var/vcap/bosh/bin:\$PATH \
+ExecStart=/bin/bash -c 'PATH=/var/vcap/bosh/bin:$PATH \
     exec nice -n -15 /var/vcap/bosh/bin/bosh-agent \
-    -P \$(cat /var/vcap/bosh/etc/operating_system) \
+    -P $(cat /var/vcap/bosh/etc/operating_system) \
     -C /var/vcap/bosh/agent.json'
 Restart=always
 KillMode=process

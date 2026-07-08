@@ -62,6 +62,22 @@ EOF
     ln -sf /lib/systemd/system/create-systemd-resolved-listener-address.service \
       "$root/lib/systemd/system/systemd-resolved.service.requires/create-systemd-resolved-listener-address.service"
 
+    # base_ubuntu_packages: enable systemd-networkd (mirrors upstream
+    # `systemctl enable systemd-networkd`). Without this the agent-written
+    # /etc/systemd/network/10_eth0.network is never applied, so static-network
+    # validation fails with "no interface configured with that name (eth0)".
+    # Replicates the symlinks systemctl would create from the unit [Install]
+    # sections: WantedBy=multi-user.target, Also=systemd-networkd.socket
+    # (WantedBy=sockets.target), Alias=dbus-org.freedesktop.network1.service.
+    mkdir -p "$root/etc/systemd/system/multi-user.target.wants"
+    mkdir -p "$root/etc/systemd/system/sockets.target.wants"
+    ln -sf /lib/systemd/system/systemd-networkd.service \
+      "$root/etc/systemd/system/multi-user.target.wants/systemd-networkd.service"
+    ln -sf /lib/systemd/system/systemd-networkd.socket \
+      "$root/etc/systemd/system/sockets.target.wants/systemd-networkd.socket"
+    ln -sf /lib/systemd/system/systemd-networkd.service \
+      "$root/etc/systemd/system/dbus-org.freedesktop.network1.service"
+
     # bosh_sysstat: sysstat default config
     mkdir -p "$root/etc/default"
     cat > "$root/etc/default/sysstat" <<'EOF'
@@ -89,6 +105,23 @@ EOF
     mkdir -p "$root/etc/systemd/system/multi-user.target.wants"
     ln -sf /etc/systemd/system/firstboot.service \
       "$root/etc/systemd/system/multi-user.target.wants/firstboot.service"
+
+    # base_ubuntu_firstboot: firstboot.sh (assets/root/firstboot.sh, inlined).
+    # Regenerates per-VM SSH host keys (ssh-keygen -A) and reconfigures sysstat.
+    # WITHOUT this, firstboot.service ExecStart fails, /root/firstboot_done is
+    # never created, and ssh.service's ConditionPathExists=/root/firstboot_done
+    # never passes -> socket-triggered sshd is skipped -> SSH unusable.
+    cat > "$root/root/firstboot.sh" <<'EOF'
+#!/bin/sh
+set -e
+
+rm -f /etc/ssh/ssh_host*key*
+ssh-keygen -A -v
+
+dpkg-reconfigure -fnoninteractive sysstat
+EOF
+    chmod 0755 "$root/root/firstboot.sh"
+    chown 0:0 "$root/root/firstboot.sh"
 
     # base_file_permission: gshadow and shadow (setuid binaries handled separately)
     chmod 0000 "$root/etc/gshadow" || true

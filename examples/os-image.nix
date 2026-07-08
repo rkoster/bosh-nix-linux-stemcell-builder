@@ -8,6 +8,7 @@ let
   base = callPackage ./noble-rootfs.nix { };
 
   bosh-agent      = callPackage ../pkgs/bosh-agent.nix { };
+  monit           = callPackage ../pkgs/monit.nix { };
   davcli          = callPackage ../pkgs/bosh-davcli.nix { };
   s3cli           = callPackage ../pkgs/bosh-s3cli.nix { };
   gcscli          = callPackage ../pkgs/bosh-gcscli.nix { };
@@ -28,7 +29,7 @@ let
      (import ../lib/overlays/audit.nix { inherit stageAssets; })
      (import ../lib/overlays/misc-os.nix { inherit stageAssets; })
      (import ../lib/overlays/systemd-services.nix { inherit stageAssets; })
-     (import ../lib/overlays/agent.nix { inherit bosh-agent; })
+     (import ../lib/overlays/agent.nix { inherit bosh-agent monit; })
      (import ../lib/overlays/blobstore-clis.nix {
        inherit davcli s3cli gcscli azureStorageCli;
      })
