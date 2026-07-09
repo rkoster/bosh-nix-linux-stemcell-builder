@@ -1,7 +1,7 @@
 # Entry point: Build a BOSH stemcell tarball for OpenStack/KVM (ubuntu-noble)
 # Consumes the bootable qcow2 from Task 2 (noble-stemcell-disk.nix)
 # Usage: nix build ./poc#noble-stemcell -L
-# Output: ./result/bosh-stemcell-0.0.1-nix-openstack-kvm-ubuntu-noble.tgz
+# Output: ./result/bosh-stemcell-0.0.2-nix-openstack-kvm-ubuntu-noble.tgz
 { callPackage, pkgs }:
 
 let
@@ -15,7 +15,7 @@ in
 
 mkStemcell {
   inherit bootableDisk;
-  version = "0.0.1-nix";
+  version = "0.0.2-nix";
   os = "ubuntu";
   osVersion = "noble";
   infrastructure = "openstack";
