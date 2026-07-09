@@ -100,6 +100,16 @@ EOF
     # Install grub for BIOS (i386-pc target) into MBR
     grub-install --target i386-pc --boot-directory /boot --no-floppy /dev/vda
 
+    # Ensure grub-mkconfig generates root=UUID=... (not root=/dev/vda2).
+    # grub's 10_linux script uses UUID form only when /dev/disk/by-uuid/<uuid>
+    # exists at grub-mkconfig time.  In the Nix runInLinuxVM build environment
+    # udev does not reliably create those symlinks, so create them manually.
+    # Without this, Incus VMs (which present disks as /dev/sda via virtio-scsi)
+    # fail to boot with "ALERT! /dev/vda2 does not exist".
+    ROOT_UUID=$(blkid -s UUID -o value /dev/vda2)
+    mkdir -p /dev/disk/by-uuid
+    ln -sf /dev/vda2 "/dev/disk/by-uuid/$ROOT_UUID"
+
     # Generate grub.cfg from /etc/default/grub
     update-grub
 
