@@ -1,0 +1,27 @@
+name: nix-stemcell-poc
+
+releases: []
+
+stemcells:
+  - alias: ubuntu
+    os: ubuntu-noble
+    version: "0.0.5-nix"
+
+instance_groups:
+  - name: vm-instance
+    instances: 1
+    vm_type: default
+    azs:
+      - z1
+    networks:
+      - name: default
+    stemcell: ubuntu
+    jobs: []
+
+variables: []
+
+update:
+  canaries: 0
+  max_in_flight: 1
+  canary_watch_time: 1000-1000
+  update_watch_time: 1000-1000
