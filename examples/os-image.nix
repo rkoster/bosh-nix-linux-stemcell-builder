@@ -17,17 +17,14 @@ let
   # DEBUG ONLY: SSH public key for emergency debugging.
   # Read from the builder's default SSH key location. Only evaluated (and thus
   # only forcing `--impure`) when the debug-ssh-keys overlay below is enabled.
-  # debugSshPubKey = builtins.readFile /home/ruben/.ssh/id_ed25519.pub;
+  debugSshPubKey = builtins.readFile /home/ruben/.ssh/id_ed25519.pub;
 
    overlays = [
       (import ../lib/overlays/users.nix { })
       (import ../lib/overlays/ssh.nix { inherit stageAssets; })
-      # DEBUG ONLY (disabled): emergency root-SSH access. These overlays rewrite
-      # sshd_config to `AllowUsers root vcap`, which blocks the agent's ephemeral
-      # `bosh ssh` users. Re-enable (and uncomment debugSshPubKey above) only for
-      # hands-on debugging of a broken VM.
-      # (import ../lib/overlays/debug-ssh-root-login.nix { inherit stageAssets; })
-      # (import ../lib/overlays/debug-ssh-keys.nix { sshPubKey = debugSshPubKey; })
+      # DEBUG ONLY: emergency root-SSH access for diagnosing bosh-agent startup crash.
+      (import ../lib/overlays/debug-ssh-root-login.nix { inherit stageAssets; })
+      (import ../lib/overlays/debug-ssh-keys.nix { sshPubKey = debugSshPubKey; })
       (import ../lib/overlays/sysctl-limits-env.nix { inherit stageAssets; })
      (import ../lib/overlays/sudoers-pam.nix { inherit stageAssets; })
      (import ../lib/overlays/rsyslog.nix { inherit stageAssets; })

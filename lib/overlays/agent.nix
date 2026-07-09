@@ -116,8 +116,8 @@ ExecStart=/bin/bash -c 'PATH=/var/vcap/bosh/bin:$PATH \
     -C /var/vcap/bosh/agent.json'
 Restart=always
 KillMode=process
-StandardOutput=journal
-StandardError=inherit
+StandardOutput=journal+console
+StandardError=journal+console
 SyslogIdentifier=bosh-agent
 
 [Install]
