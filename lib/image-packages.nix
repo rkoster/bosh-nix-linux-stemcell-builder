@@ -9,7 +9,14 @@ let
   noble = callPackage ./noble-distro.nix { };
   bosh = import ./noble-packages.nix;
   boot = import ./boot-packages.nix;
+  # Debootstrap-style base seed: all Priority:required + Essential:yes packages,
+  # derived deterministically from the pinned `main` index. Ensures essential
+  # binaries with no reverse-dependency (e.g. `hostname`) are present.
+  essential = callPackage ./essential-packages.nix { inherit noble; };
 in
-lib.filter (p: !lib.elem p boot.dropFromBase) noble.basePackages
-++ boot.bootEssentials
-++ bosh
+lib.unique (
+  essential
+  ++ lib.filter (p: !lib.elem p boot.dropFromBase) noble.basePackages
+  ++ boot.bootEssentials
+  ++ bosh
+)

@@ -29,6 +29,21 @@ pkgsStatic.stdenv.mkDerivation rec {
       --replace-quiet /bin/mv mv \
       --replace-quiet /bin/rm rm \
       --replace-quiet /bin/cp cp
+
+    # musl `getopt()` is strict POSIX: it stops scanning at the first non-option,
+    # so the agent's ACTION-FIRST invocation `monit stop -g vcap` never parses
+    # `-g vcap` (Run.mygroup stays NULL) and monit tries to control a service
+    # literally named `-g` -> daemon 404 -> "There is no service by that name"
+    # -> exit 1, failing every deploy's "stopping jobs" phase. glibc's getopt
+    # permutes argv, which is why the dynamically-linked upstream stemcell works.
+    # musl's `getopt_long` DOES implement GNU-style permutation, so switch to it
+    # (empty long-options table). getopt.h is already included at monitor.c:51.
+    # See docs/superpowers/specs/2026-07-08-m5-monit-getopt-ssh-findings.md.
+    # --replace-fail: if the vendored source ever changes this line, fail the
+    # build loudly rather than silently reintroducing the musl getopt bug.
+    substituteInPlace monitor.c \
+      --replace-fail 'getopt(argc,argv,"c:d:g:l:p:s:iItvVhH")' \
+                     'getopt_long(argc,argv,"c:d:g:l:p:s:iItvVhH",(const struct option[]){{0,0,0,0}},NULL)'
   '';
 
   # monit 5.2.5 predates modern GCC/toolchain defaults:
