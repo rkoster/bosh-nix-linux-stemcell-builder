@@ -25,4 +25,19 @@
    "cron"           # spec: crontab command must exist + cron.service enabled
    "systemd-timesyncd"  # spec: /etc/passwd must include systemd-timesync user (uid 996)
    "grub2"          # spec: grub2 package must be installed + /boot/grub/gfxblacklist.txt
+
+   # Compile-time toolchain expected by BOSH source-package compilation. These
+   # live in upstream stages OUTSIDE base_ubuntu_packages, so they were missed by
+   # the original transcription above:
+   #   - zlib1g-dev: installed by stemcell_builder/stages/bosh_monit/apply.sh:15.
+   #     Provides /usr/include/zlib.h + libz.so (dev symlink). Without it, releases
+   #     that compile from source fail — e.g. zookeeper's python-2.7 build aborts
+   #     with "Compression requires the (missing) zlib module" (runtime libz.so.1
+   #     alone is not enough; the header is required at compile time).
+   #   - build-essential: installed by base_ubuntu_build_essential/apply.sh:12.
+   #     gcc/make/dpkg-dev currently arrive only transitively (via debhelper/cmake
+   #     deps); depend on it explicitly so the compile toolchain is guaranteed,
+   #     matching the upstream stemcell.
+   "zlib1g-dev"
+   "build-essential"
 ]
