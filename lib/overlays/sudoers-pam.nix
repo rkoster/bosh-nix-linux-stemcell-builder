@@ -4,7 +4,7 @@
 # - Strip nullok from /etc/pam.d/*
 # - Apply edits to PAM common-account, common-auth, common-password, and login
 # Assets are inlined for reproducibility (nested git repo access not available in Nix sandbox).
-{ stageAssets }:
+{ }:
 {
   name = "sudoers-pam";
   script = ''

@@ -3,7 +3,7 @@
 # rsyslog.d configs, logrotate config, systemd service/journald overrides, and
 # wait_for_var_log_to_be_mounted script to their final destinations.
 # Assets are inlined for reproducibility (nested git repo access not available in Nix sandbox).
-{ stageAssets }:
+{ }:
 {
   name = "rsyslog";
   script = ''

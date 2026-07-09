@@ -3,7 +3,6 @@
 # (users before anything asserting group membership; ssh after base packages).
 { callPackage, lib, writeText }:
 let
-  stageAssets = callPackage ../lib/stage-assets.nix { };
   applyOverlays = callPackage ../lib/mk-apply-overlays.nix { };
   base = callPackage ./noble-rootfs.nix { };
 
@@ -26,13 +25,13 @@ let
 
    overlays = [
       (import ../lib/overlays/users.nix { })
-      (import ../lib/overlays/ssh.nix { inherit stageAssets; })
-      (import ../lib/overlays/sysctl-limits-env.nix { inherit stageAssets; })
-     (import ../lib/overlays/sudoers-pam.nix { inherit stageAssets; })
-     (import ../lib/overlays/rsyslog.nix { inherit stageAssets; })
-     (import ../lib/overlays/audit.nix { inherit stageAssets; })
-     (import ../lib/overlays/misc-os.nix { inherit stageAssets; })
-     (import ../lib/overlays/systemd-services.nix { inherit stageAssets; })
+      (import ../lib/overlays/ssh.nix { })
+      (import ../lib/overlays/sysctl-limits-env.nix { })
+     (import ../lib/overlays/sudoers-pam.nix { })
+     (import ../lib/overlays/rsyslog.nix { })
+     (import ../lib/overlays/audit.nix { })
+     (import ../lib/overlays/misc-os.nix { })
+     (import ../lib/overlays/systemd-services.nix { })
      (import ../lib/overlays/agent.nix { inherit bosh-agent monit; })
      (import ../lib/overlays/blobstore-clis.nix {
        inherit davcli s3cli gcscli azureStorageCli;
@@ -42,5 +41,4 @@ let
 
    final = applyOverlays { inherit base overlays; };
 in
-# Re-expose as os-image.tgz for the oracle harness.
 final

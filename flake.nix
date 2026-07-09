@@ -33,22 +33,6 @@
           echo "POC devshell: OVMF_FD=$OVMF_FD"
         '';
       };
-
-      devShells.oracle = pkgs.mkShell {
-        packages = with pkgs; [
-          ruby_3_3 bundler
-          # native gem build + serverspec runtime deps
-          gcc gnumake libyaml openssl pkg-config
-          gnutar gzip sudo
-          # chroot backend: mount/mountpoint/umount from util-linux; mkdir/chroot from coreutils
-          util-linux coreutils
-        ];
-        shellHook = ''
-          export BUNDLE_PATH="$PWD/.bundle"
-          echo "POC oracle devshell: ruby $(ruby -v)"
-          echo "Run: bash poc/oracle/run-os-image-specs.sh <os-image.tgz>"
-        '';
-      };
     };
   });
 }

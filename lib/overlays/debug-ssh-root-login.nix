@@ -2,7 +2,7 @@
 # This overlay is temporary and should be removed from production stemcells.
 # Placed after ssh.nix to modify its configuration.
 
-{ stageAssets }:
+{ }:
 {
   name = "debug-ssh-root-login";
   script = ''

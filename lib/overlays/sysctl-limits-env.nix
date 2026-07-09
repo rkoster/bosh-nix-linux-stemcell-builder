@@ -3,7 +3,7 @@
 # - Append core limit to /etc/security/limits.conf
 # - Write /etc/environment with BOSH PATH extension
 # Assets are inlined for reproducibility (nested git repo access not available in Nix sandbox).
-{ stageAssets }:
+{ }:
 {
   name = "sysctl-limits-env";
   script = ''

@@ -1,4 +1,4 @@
-{ stageAssets }:
+{ }:
 {
   name = "misc-os";
   script = ''

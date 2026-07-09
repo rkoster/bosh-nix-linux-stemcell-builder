@@ -16,7 +16,7 @@ BUILD_STEMCELL=false
 CLEANUP=false
 DRY_RUN=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Helper functions
 print_help() {
@@ -138,7 +138,7 @@ log "✓ BOSH director is reachable"
 if [[ "$BUILD_STEMCELL" == true ]]; then
   log_step "Step 2: Building Nix stemcell"
   
-  if run_cmd nix build ./poc#noble-stemcell -L --no-link; then
+  if run_cmd nix build .#noble-stemcell -L --no-link; then
     log "✓ Build succeeded"
   else
     log_error "Build failed"

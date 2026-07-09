@@ -1,7 +1,7 @@
 # bosh_audit_ubuntu + bosh_log_audit_start stages: install auditd, configure audit rules,
 # disable auditd service, and copy logging/auditing startup script.
 # Reproduces the comprehensive audit configuration from the stemcell builder.
-{ stageAssets }:
+{ }:
 {
   name = "audit";
   script = ''

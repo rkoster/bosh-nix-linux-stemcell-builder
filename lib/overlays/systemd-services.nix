@@ -1,4 +1,4 @@
-{ stageAssets }:
+{ }:
 {
   name = "systemd-services";
   script = ''
