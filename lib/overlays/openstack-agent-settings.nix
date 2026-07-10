@@ -1,52 +1,8 @@
-# Reproduces `bosh_openstack_agent_settings`: overwrite /var/vcap/bosh/agent.json
-# with the OpenStack platform + settings sources config.
+# openstack-agent-settings overlay: fragment externalized to openstack-agent-settings.sh (byte-identical to the previous
+# inline string). Applied by rootfs/apply-overlays.nix inside the shared fakeroot
+# session with $root bound and the ambient PATH.
 { }:
-{
+import ../mkOverlay.nix {
   name = "openstack-agent-settings";
-  script = ''
-    mkdir -p "$root/var/vcap/bosh"
-    cat > "$root/var/vcap/bosh/agent.json" <<'EOF'
-{
-  "Platform": {
-    "Linux": {
-      "PartitionerType": "parted",
-      "CreatePartitionIfNoEphemeralDisk": true,
-      "DevicePathResolutionType": "virtio",
-      "ServiceManager": "systemd",
-      "DiskIDTransformPattern": "^([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})$",
-      "DiskIDTransformReplacement": "scsi-''${1}''${2}''${3}''${4}''${5}"
-    }
-  },
-  "Infrastructure": {
-    "Settings": {
-      "Sources": [
-        {
-          "Type": "File",
-          "SettingsPath": "/var/vcap/bosh/agent-bootstrap-env.json"
-        },
-        {
-          "Type": "ConfigDrive",
-          "DiskPaths": [
-            "/dev/disk/by-label/CONFIG-2",
-            "/dev/disk/by-label/config-2"
-          ],
-          "MetaDataPath": "ec2/latest/meta-data.json",
-          "UserDataPath": "ec2/latest/user-data"
-        },
-        {
-          "Type": "HTTP",
-          "URI": "http://169.254.169.254",
-          "UserDataPath": "/latest/user-data",
-          "InstanceIDPath": "/latest/meta-data/instance-id",
-          "SSHKeysPath": "/latest/meta-data/public-keys/0/openssh-key"
-        }
-      ],
-
-      "UseServerName": true,
-      "UseRegistry": true
-    }
-  }
-}
-EOF
-  '';
+  src = ./openstack-agent-settings.sh;
 }
