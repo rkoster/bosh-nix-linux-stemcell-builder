@@ -16,18 +16,20 @@
 , qemu
 , gnutar
 , replaceVars
+, callPackage
 }:
+let
+  mkVmImage = callPackage ../lib/mkVmImage.nix { };
+in
 { osImage, name ? "noble-stemcell", size ? 2560 }:
 
-vmTools.runInLinuxVM (stdenv.mkDerivation {
-  inherit name;
+mkVmImage {
+  inherit name size;
   
-  preVM = vmTools.createEmptyImage { inherit size; fullName = name; };
-
   buildCommand = builtins.readFile (replaceVars ./bootable-disk.sh {
     inherit util-linux dosfstools e2fsprogs qemu gnutar systemdMinimal;
     osImage = "${osImage}";
   });
   
   nativeBuildInputs = [ systemdMinimal util-linux dosfstools e2fsprogs qemu gnutar ];
-})
+}
