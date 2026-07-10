@@ -6,19 +6,19 @@
 { vmTools, systemdMinimal, gptfdisk, util-linux, dosfstools, e2fsprogs, callPackage }:
 
 let
-  noble = callPackage ../lib/noble-distro.nix { };
+  noble = callPackage ../ubuntu/apt-pins.nix { };
   # Usrmerge-safe fork of vmTools.makeImageFromDebDist. Upstream's raw
   # `dpkg-deb --extract` clobbers the /sbin -> usr/sbin symlink when a package
   # ships a real ./sbin directory, which breaks the start-stop-daemon diversion.
   # See poc/lib/fill-disk-usrmerge.nix for the full analysis.
-  inherit (callPackage ../lib/fill-disk-usrmerge.nix { }) makeImageFromDebDist;
+  inherit (callPackage ../rootfs/fill-disk-usrmerge.nix { }) makeImageFromDebDist;
 in
 makeImageFromDebDist {
   inherit (noble) name fullName urlPrefix packagesLists;
 
   # Full package set from the shared assembler — identical to the set the Task 1.4
   # resolver gate validated (filtered jammy base ++ boot essentials ++ BOSH set).
-  packages = callPackage ../lib/image-packages.nix { };
+  packages = (callPackage ../ubuntu/deb-sets.nix { }).image;
 
   size = 8192;
 

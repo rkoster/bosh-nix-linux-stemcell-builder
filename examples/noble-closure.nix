@@ -6,8 +6,8 @@
 { vmTools, callPackage }:
 
 let
-  noble = callPackage ../lib/noble-distro.nix { };
-  packages = callPackage ../lib/image-packages.nix { };
+  noble = callPackage ../ubuntu/apt-pins.nix { };
+  packages = (callPackage ../ubuntu/deb-sets.nix { }).image;
 in
 # debClosureGenerator returns a derivation that builds "<name>.nix": a Nix
 # expression listing every .deb (with fetchurl) in the resolved closure.
