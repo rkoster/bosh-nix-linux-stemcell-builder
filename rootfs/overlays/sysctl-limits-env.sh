@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2148,SC2154,SC2016
     # bosh_sysctl: install 60-bosh-sysctl.conf (inlined verbatim from upstream)
     mkdir -p "$root/etc/sysctl.d"
     cat > "$root/etc/sysctl.d/60-bosh-sysctl.conf" <<'SYSCTL1'

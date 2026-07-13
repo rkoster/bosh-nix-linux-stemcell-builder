@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2148,SC2154,SC2016
     # Create /etc/rsyslog.conf with the main rsyslog configuration
     cat > "$root/etc/rsyslog.conf" <<'RSYSLOGCONF'
 #  /etc/rsyslog.conf	Configuration file for rsyslog.

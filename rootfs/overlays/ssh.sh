@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2148,SC2154,SC2016
     cfg="$root/etc/ssh/sshd_config"
     echo "" >> "$cfg"
     for kv in \

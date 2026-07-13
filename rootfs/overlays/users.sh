@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2148,SC2154,SC2016
     # /etc/group — exact bytes asserted by os_image/ubuntu_spec.rb (lines 413–477)
     cat > "$root/etc/group" <<'GROUP'
 root:x:0:

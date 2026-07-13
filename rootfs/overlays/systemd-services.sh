@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2148,SC2154,SC2016
     # bosh_monit: monit.service + enable
     mkdir -p "$root/lib/systemd/system"
     cat > "$root/lib/systemd/system/monit.service" <<'EOF'

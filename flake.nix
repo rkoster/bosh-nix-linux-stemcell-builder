@@ -10,11 +10,22 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     flake-parts.url = "github:hercules-ci/flake-parts";
+    treefmt-nix.url = "github:numtide/treefmt-nix";
   };
 
   outputs = inputs: inputs.flake-parts.lib.mkFlake { inherit inputs; } ({ ... }: {
+    imports = [ inputs.treefmt-nix.flakeModule ];
     systems = [ "x86_64-linux" ];
     perSystem = { pkgs, ... }: {
+      # Formatter and checks
+      treefmt = {
+        projectRootFile = "flake.nix";
+        programs.nixfmt.enable = true;
+        programs.shfmt.enable = true;
+        programs.shellcheck.enable = true;
+        settings.formatter.shfmt.excludes = [ "rootfs/overlays/*.sh" ];
+      };
+
       # Explicit outputs: os-image (Phase 1), noble-stemcell + openstack-kvm (Phase 2),
       # demos/diagnostics, and source-built components.
       packages =

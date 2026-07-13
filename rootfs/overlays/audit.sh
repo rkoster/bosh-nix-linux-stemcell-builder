@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2148,SC2154,SC2016
     # Install auditd (should already be in the base closure, but ensure it's configured)
     # The auditd package provides default /etc/audit/auditd.conf and /etc/audit/audit.rules
 

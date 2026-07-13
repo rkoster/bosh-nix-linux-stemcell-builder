@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2148,SC2154,SC2016
     # system_grub: menu.lst placeholder (grub2 pkg already installed in M1 closure).
     mkdir -p "$root/boot/grub"
     touch "$root/boot/grub/menu.lst"

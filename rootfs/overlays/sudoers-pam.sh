@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2148,SC2154,SC2016
     # bosh_sudoers: Append includedir to sudoers and create bosh_sudoers sudoers.d file
     # Also add the rule directly to /etc/sudoers so that spec tests checking
     # /etc/sudoers content (not just the included directory) find the rule.

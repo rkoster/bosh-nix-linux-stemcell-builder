@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2148,SC2154,SC2016
 # DEBUG ONLY: Enable root login for emergency debugging
 # This should be removed from production stemcells
 

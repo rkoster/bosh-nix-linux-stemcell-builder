@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+# shellcheck disable=SC2148,SC2154,SC2016
     mkdir -p "$root/var/vcap/bosh"
     cat > "$root/var/vcap/bosh/agent.json" <<'EOF'
 {
