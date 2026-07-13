@@ -6,9 +6,9 @@
 let
   inherit (callPackage ./fill-disk-usrmerge.nix { }) makeImageFromDebDist;
 in
-{ noble, packages, size ? 16384, seedStartStopDaemon ? true }:
+{ aptPins, packages, size ? 16384, seedStartStopDaemon ? true }:
 makeImageFromDebDist {
-  inherit (noble) name fullName urlPrefix packagesLists;
+  inherit (aptPins) name fullName urlPrefix packagesLists;
   inherit packages size;
 
   # Since we override createRootFS, we must include the full setup (mirror the default but
