@@ -1,3 +1,7 @@
+# shellcheck shell=bash
+# No shebang: this file is not executed standalone. It is embedded into the
+# VM builder script via `replaceVars` (bootable-disk.nix), which already
+# supplies its own shebang/bash invocation.
 set -exuo pipefail
 
 export SOURCE_DATE_EPOCH=1700000000
