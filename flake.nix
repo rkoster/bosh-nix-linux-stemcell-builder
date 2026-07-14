@@ -27,7 +27,7 @@
       };
 
       # Explicit outputs: os-image (Phase 1), noble-stemcell + openstack-kvm (Phase 2),
-      # demos/diagnostics, and source-built components.
+      # and source-built components.
       packages =
         let
           blobstoreClis = pkgs.callPackage ./build/pkgs/blobstore-clis.nix { };
@@ -42,11 +42,6 @@
           noble-stemcell-disk = pkgs.callPackage ./build/stemcells/openstack-kvm-disk.nix { };
           noble-stemcell = openstack-kvm;
           openstack-kvm = openstack-kvm;
-
-          # Demos / diagnostics
-          noble-bootable = pkgs.callPackage ./build/examples/noble-bootable.nix { };
-          noble-closure = pkgs.callPackage ./build/examples/noble-closure.nix { };
-          hello-vm = pkgs.callPackage ./build/examples/hello-vm.nix { };
 
           # Source-built components (names preserved from the old auto-discovery)
           bosh-agent = pkgs.callPackage ./build/pkgs/bosh-agent.nix { };

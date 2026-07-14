@@ -1,6 +1,5 @@
 # Thin wrapper over vmTools: build `buildCommand` inside a Linux VM with an
-# attached empty raw disk of `size` MiB. Shared by stemcells/bootable-disk.nix
-# and reusable by examples/noble-bootable.nix.
+# attached empty raw disk of `size` MiB. Used by stemcells/bootable-disk.nix.
 { vmTools, stdenv }:
 { name, size ? 2560, buildCommand, nativeBuildInputs ? [ ], memSize ? 512 }:
 vmTools.runInLinuxVM (stdenv.mkDerivation {

@@ -619,13 +619,9 @@ nix flake update
 │   │   ├── bosh-agent.nix             # BOSH agent build
 │   │   ├── monit.nix                  # Monit process monitor
 │   │   └── blobstore-clis.nix         # Blobstore CLI tools
-│   ├── lib/
-│   │   ├── mkVmImage.nix              # VM image creation utilities
-│   │   └── mkOverlay.nix              # Overlay composition utilities
-│   └── examples/
-│       ├── noble-bootable.nix         # Standalone bootable disk example
-│       ├── noble-closure.nix          # Dependency resolver inspection
-│       └── hello-vm.nix               # Minimal hello world VM
+│   └── lib/
+│       ├── mkVmImage.nix              # VM image creation utilities
+│       └── mkOverlay.nix              # Overlay composition utilities
 ├── scripts/
 │   ├── byte-check.sh                  # Generic 2-build reproducibility gate
 │   ├── byte-check-osimage.sh          # L1 gate wrapper

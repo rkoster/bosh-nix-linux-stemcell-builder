@@ -47,16 +47,15 @@ source ./bosh.env
 ./scripts/deploy-stemcell.sh --build --cleanup
 ```
 
-Other flake outputs: `noble-rootfs`, `noble-bootable`, `noble-stemcell-disk`,
-`noble-closure`, `hello-vm`, and the vendored blobstore CLIs / agent / `monit`
-under `.#` (one package per file in `examples/` and `pkgs/`).
+Other flake outputs: `noble-rootfs`, `noble-stemcell-disk`, and the vendored
+blobstore CLIs / agent / `monit` under `.#` (one package per file in
+`build/pkgs/`).
 
 ## Repository layout
 
 | Path | Role |
 |------|------|
-| `flake.nix` | Flake entry point. Pins `nixpkgs` (`nixos-26.05`); one package per file in `build/examples/` and `build/pkgs/`. |
-| `build/examples/` | Buildable image derivations: `os-image.nix`, `noble-stemcell.nix`, `noble-bootable.nix`, `noble-stemcell-disk.nix`, etc. |
+| `flake.nix` | Flake entry point. Pins `nixpkgs` (`nixos-26.05`); one package per file in `build/pkgs/`. |
 | `build/lib/` | Build library: distro/source pinning (`noble-source.nix`, `noble-distro.nix`), package sets (`base-`, `boot-`, `essential-`, `image-`, `noble-packages.nix`), and the assembly helpers (`mk-rootfs-tarball.nix`, `mk-bootable-disk.nix`, `mk-stemcell.nix`, `mk-apply-overlays.nix`). |
 | `build/lib/overlays/` | Post-unpack filesystem overlays that reproduce the upstream shell stages (ssh, sudoers/pam, audit, rsyslog, sysctl, systemd services, users, agent, OpenStack agent settings, blobstore CLIs). |
 | `build/pkgs/` | Source-built components: the BOSH `agent`, blobstore CLIs (`s3cli`, `gcscli`, `davcli`, `azure-storage-cli`), and `monit` 5.2.5 (built from the vendored tarball). |
