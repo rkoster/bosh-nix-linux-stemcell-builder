@@ -55,11 +55,11 @@ under `.#` (one package per file in `examples/` and `pkgs/`).
 
 | Path | Role |
 |------|------|
-| `flake.nix` | Flake entry point. Pins `nixpkgs` (`nixos-26.05`); one package per file in `examples/` and `pkgs/`. |
-| `examples/` | Buildable image derivations: `os-image.nix`, `noble-stemcell.nix`, `noble-bootable.nix`, `noble-stemcell-disk.nix`, etc. |
-| `lib/` | Build library: distro/source pinning (`noble-source.nix`, `noble-distro.nix`), package sets (`base-`, `boot-`, `essential-`, `image-`, `noble-packages.nix`), and the assembly helpers (`mk-rootfs-tarball.nix`, `mk-bootable-disk.nix`, `mk-stemcell.nix`, `mk-apply-overlays.nix`). |
-| `lib/overlays/` | Post-unpack filesystem overlays that reproduce the upstream shell stages (ssh, sudoers/pam, audit, rsyslog, sysctl, systemd services, users, agent, OpenStack agent settings, blobstore CLIs). |
-| `pkgs/` | Source-built components: the BOSH `agent`, blobstore CLIs (`s3cli`, `gcscli`, `davcli`, `azure-storage-cli`), and `monit` 5.2.5 (built from the vendored tarball). |
+| `flake.nix` | Flake entry point. Pins `nixpkgs` (`nixos-26.05`); one package per file in `build/examples/` and `build/pkgs/`. |
+| `build/examples/` | Buildable image derivations: `os-image.nix`, `noble-stemcell.nix`, `noble-bootable.nix`, `noble-stemcell-disk.nix`, etc. |
+| `build/lib/` | Build library: distro/source pinning (`noble-source.nix`, `noble-distro.nix`), package sets (`base-`, `boot-`, `essential-`, `image-`, `noble-packages.nix`), and the assembly helpers (`mk-rootfs-tarball.nix`, `mk-bootable-disk.nix`, `mk-stemcell.nix`, `mk-apply-overlays.nix`). |
+| `build/lib/overlays/` | Post-unpack filesystem overlays that reproduce the upstream shell stages (ssh, sudoers/pam, audit, rsyslog, sysctl, systemd services, users, agent, OpenStack agent settings, blobstore CLIs). |
+| `build/pkgs/` | Source-built components: the BOSH `agent`, blobstore CLIs (`s3cli`, `gcscli`, `davcli`, `azure-storage-cli`), and `monit` 5.2.5 (built from the vendored tarball). |
 | `scripts/` | `deploy-stemcell.sh` (end-to-end director validation), `apt-resolve-noble.sh`, QEMU/OVMF boot smoke tests. |
 | `manifests/`, `*.yml` | Validation manifests: `zookeeper.yml` (e2e deployment), `nix-stemcell-poc.yml` (jobless boot), `upstream-jobless-poc.yml` (upstream baseline). |
 | `docs/specs/`, `docs/plans/` | Dated feasibility findings and milestone plans (the research trail M0–M6). |
