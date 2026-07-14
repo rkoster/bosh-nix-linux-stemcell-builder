@@ -23,34 +23,34 @@
         programs.nixfmt.enable = true;
         programs.shfmt.enable = true;
         programs.shellcheck.enable = true;
-        settings.formatter.shfmt.excludes = [ "rootfs/overlays/*.sh" ];
+        settings.formatter.shfmt.excludes = [ "build/rootfs/overlays/*.sh" ];
       };
 
       # Explicit outputs: os-image (Phase 1), noble-stemcell + openstack-kvm (Phase 2),
       # demos/diagnostics, and source-built components.
       packages =
         let
-          blobstoreClis = pkgs.callPackage ./pkgs/blobstore-clis.nix { };
-          openstack-kvm = pkgs.callPackage ./stemcells/openstack-kvm.nix { };
+          blobstoreClis = pkgs.callPackage ./build/pkgs/blobstore-clis.nix { };
+          openstack-kvm = pkgs.callPackage ./build/stemcells/openstack-kvm.nix { };
         in
         {
           # PHASE 1: OS image (rootfs tarball)
-          os-image = pkgs.callPackage ./rootfs/os-image.nix { };
-          noble-rootfs = pkgs.callPackage ./rootfs/rootfs.nix { };
+          os-image = pkgs.callPackage ./build/rootfs/os-image.nix { };
+          noble-rootfs = pkgs.callPackage ./build/rootfs/rootfs.nix { };
 
           # PHASE 2 (OpenStack/KVM)
-          noble-stemcell-disk = pkgs.callPackage ./stemcells/openstack-kvm-disk.nix { };
+          noble-stemcell-disk = pkgs.callPackage ./build/stemcells/openstack-kvm-disk.nix { };
           noble-stemcell = openstack-kvm;
           openstack-kvm = openstack-kvm;
 
           # Demos / diagnostics
-          noble-bootable = pkgs.callPackage ./examples/noble-bootable.nix { };
-          noble-closure = pkgs.callPackage ./examples/noble-closure.nix { };
-          hello-vm = pkgs.callPackage ./examples/hello-vm.nix { };
+          noble-bootable = pkgs.callPackage ./build/examples/noble-bootable.nix { };
+          noble-closure = pkgs.callPackage ./build/examples/noble-closure.nix { };
+          hello-vm = pkgs.callPackage ./build/examples/hello-vm.nix { };
 
           # Source-built components (names preserved from the old auto-discovery)
-          bosh-agent = pkgs.callPackage ./pkgs/bosh-agent.nix { };
-          monit = pkgs.callPackage ./pkgs/monit.nix { };
+          bosh-agent = pkgs.callPackage ./build/pkgs/bosh-agent.nix { };
+          monit = pkgs.callPackage ./build/pkgs/monit.nix { };
           bosh-davcli = blobstoreClis.davcli;
           bosh-s3cli = blobstoreClis.s3cli;
           bosh-gcscli = blobstoreClis.gcscli;
