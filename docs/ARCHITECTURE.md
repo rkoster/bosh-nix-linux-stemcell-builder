@@ -56,7 +56,7 @@ This repository implements a **reproducible, content-addressed BOSH Linux stemce
 └─────────────────────────────────────────────────────────────────┘
          ↑
          │ rootfs/os-image.nix
-         │ (apply-overlays, tarball with deterministic flags)
+         │ (apply-stages, tarball with deterministic flags)
          │
 ┌─────────────────────────────────────────────────────────────────┐
 │              FILESYSTEM ASSEMBLY (IN-VM dpkg)                   │
@@ -64,13 +64,13 @@ This repository implements a **reproducible, content-addressed BOSH Linux stemce
 │  │ /mnt/root (ext4, mounted in Linux VM)                 │    │
 │  │  ├── dpkg -i package1.deb ... packageN.deb            │    │
 │  │  ├── Run postinst scripts in chroot                   │    │
-│  │  ├── Apply 11 configuration overlays (fakeroot)       │    │
+│  │  ├── Apply 11 configuration stages (fakeroot)       │    │
 │  │  └── Output: ext4 filesystem image                    │    │
 │  └────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
          ↑
          │ rootfs/fill-disk-usrmerge.nix
-         │ (usrmerge-safe dpkg extraction, overlay application)
+         │ (usrmerge-safe dpkg extraction, stage application)
          │
 ┌─────────────────────────────────────────────────────────────────┐
 │         DEPENDENCY RESOLUTION & PACKAGE FETCHING                │
@@ -104,7 +104,7 @@ This repository implements a **reproducible, content-addressed BOSH Linux stemce
 │  │ Package list (ubuntu/deb-sets.nix)                     │    │
 │  │  ├── bootEssentials (systemd, linux, grub, apt...)    │    │
 │  │  ├── bosh (ssl, monitoring, debugging tools...)        │    │
-│  │  └── overlays (ssh, audit, sudoers, hardening...)      │    │
+│  │  └── stages (ssh, audit, sudoers, hardening...)      │    │
 │  └────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -285,10 +285,10 @@ fetchurl {
    ```
    (Installs fail gracefully with `|| true`, like debootstrap)
 
-5. **Apply configuration overlays (single fakeroot session):**
+5. **Apply configuration stages (single fakeroot session):**
    ```bash
    fakeroot -i state-in -s state-out << 'EOF'
-     # Apply SSH, sudoers, audit, systemd, hardening overlays...
+     # Apply SSH, sudoers, audit, systemd, hardening stages...
    EOF
    ```
 
@@ -441,23 +441,23 @@ fi
 
 ---
 
-## Configuration Overlays
+## Configuration Stages
 
-After the base filesystem is assembled, 11 configuration overlays are applied in a **single fakeroot session** (avoiding expensive re-extractions):
+After the base filesystem is assembled, 11 configuration stages are applied in a **single fakeroot session** (avoiding expensive re-extractions):
 
-1. **SSH Configuration** — [`build/rootfs/overlays/ssh.nix`](../build/rootfs/overlays/ssh.nix) — server keys, sshd_config
-2. **Sudoers Setup** — [`build/rootfs/overlays/sudoers-pam.sh`](../build/rootfs/overlays/sudoers-pam.sh) — vcap user with passwordless sudo
-3. **Audit Daemon** — [`build/rootfs/overlays/audit.sh`](../build/rootfs/overlays/audit.sh) — auditd rules and logging
-4. **Systemd Units** — [`build/rootfs/overlays/systemd-services.nix`](../build/rootfs/overlays/systemd-services.nix) — BOSH agent service, monitoring
-5. **Hardening** — [`build/rootfs/overlays/sysctl-limits-env.nix`](../build/rootfs/overlays/sysctl-limits-env.nix) — sysctl, kernel parameters
-6. **Package Lists** — [`build/rootfs/overlays/misc-os.sh`](../build/rootfs/overlays/misc-os.sh) — packages.txt, dev_tools_file_list.txt, SBOM
-7. **Locale & Timezone** — [`build/rootfs/overlays/misc-os.sh`](../build/rootfs/overlays/misc-os.sh) — en_US.UTF-8, UTC
-8. **Hostname & Network** — [`build/rootfs/overlays/misc-os.sh`](../build/rootfs/overlays/misc-os.sh) — dhclient, hostname resolution
-9. **OpenStack Agent Settings** — [`build/rootfs/overlays/openstack-agent-settings.nix`](../build/rootfs/overlays/openstack-agent-settings.nix) — OpenStack-specific cloud-init
-10. **User Accounts** — [`build/rootfs/overlays/users.nix`](../build/rootfs/overlays/users.nix) — root, vcap, bosh_ssh_* users
-11. **Debug SSH** — [`build/rootfs/overlays/debug-ssh-root-login.nix`](../build/rootfs/overlays/debug-ssh-root-login.nix) — diagnostic SSH access
+1. **SSH Configuration** — [`build/stages/ssh.nix`](../build/stages/ssh.nix) — server keys, sshd_config
+2. **Sudoers Setup** — [`build/stages/sudoers-pam.sh`](../build/stages/sudoers-pam.sh) — vcap user with passwordless sudo
+3. **Audit Daemon** — [`build/stages/audit.sh`](../build/stages/audit.sh) — auditd rules and logging
+4. **Systemd Units** — [`build/stages/systemd-services.nix`](../build/stages/systemd-services.nix) — BOSH agent service, monitoring
+5. **Hardening** — [`build/stages/sysctl-limits-env.nix`](../build/stages/sysctl-limits-env.nix) — sysctl, kernel parameters
+6. **Package Lists** — [`build/stages/misc-os.sh`](../build/stages/misc-os.sh) — packages.txt, dev_tools_file_list.txt, SBOM
+7. **Locale & Timezone** — [`build/stages/misc-os.sh`](../build/stages/misc-os.sh) — en_US.UTF-8, UTC
+8. **Hostname & Network** — [`build/stages/misc-os.sh`](../build/stages/misc-os.sh) — dhclient, hostname resolution
+9. **OpenStack Agent Settings** — [`build/stages/openstack-agent-settings.nix`](../build/stages/openstack-agent-settings.nix) — OpenStack-specific cloud-init
+10. **User Accounts** — [`build/stages/users.nix`](../build/stages/users.nix) — root, vcap, bosh_ssh_* users
+11. **Debug SSH** — [`build/stages/debug-ssh-root-login.nix`](../build/stages/debug-ssh-root-login.nix) — diagnostic SSH access
 
-Orchestrated by: [`build/rootfs/overlays/default.nix`](../build/rootfs/overlays/default.nix) and [`build/rootfs/apply-overlays.nix`](../build/rootfs/apply-overlays.nix)
+Orchestrated by: [`build/stages/default.nix`](../build/stages/default.nix) and [`build/rootfs/apply-stages.nix`](../build/rootfs/apply-stages.nix)
 
 ---
 
@@ -472,7 +472,7 @@ Orchestrated by: [`build/rootfs/overlays/default.nix`](../build/rootfs/overlays/
 | APT indices | snapshot.ubuntu.com | sha256 from `.xz` files | Fixed-output derivations |
 | .deb packages | snapshot.ubuntu.com | sha256 from Packages index | Fixed-output derivations |
 | Nix code | Git repo | git commit hash | Flake lock (reproducible) |
-| Overlays | Git repo | git commit hash | Part of derivation |
+| Stages | Git repo | git commit hash | Part of derivation |
 
 ### Output Determinism
 
@@ -592,13 +592,13 @@ nix flake update
 │   │   ├── deb-sets.nix               # Package lists (bootEssentials, bosh, image)
 │   │   └── essential.nix              # Essential package seed (pure-Nix parsing)
 │   ├── rootfs/
-│   │   ├── os-image.nix               # Entry point (base + overlays) → L1 output
+│   │   ├── os-image.nix               # Entry point (base + stages) → L1 output
 │   │   ├── rootfs.nix                 # Tarball builder (calls tarball.nix)
 │   │   ├── tarball.nix                # Deterministic tar + gzip → rootfs.tar.gz
 │   │   ├── fill-disk-usrmerge.nix     # In-VM dpkg extraction (usrmerge-safe fork)
-│   │   ├── apply-overlays.nix         # Overlay application (single fakeroot session)
-│   │   └── overlays/
-│   │       ├── default.nix            # Overlay orchestration
+│   │   ├── apply-stages.nix         # Stage application (single fakeroot session)
+│   │   └── stages/
+│   │       ├── default.nix            # Stage orchestration
 │   │       ├── ssh.nix                 # SSH key generation and config
 │   │       ├── sudoers-pam.sh          # Sudoers and PAM setup
 │   │       ├── audit.sh                # Audit daemon configuration
@@ -621,7 +621,7 @@ nix flake update
 │   │   └── blobstore-clis.nix         # Blobstore CLI tools
 │   └── lib/
 │       ├── mkVmImage.nix              # VM image creation utilities
-│       └── mkOverlay.nix              # Overlay composition utilities
+│       └── mkStage.nix              # Stage composition utilities
 ├── scripts/
 │   ├── byte-check.sh                  # Generic 2-build reproducibility gate
 │   ├── byte-check-osimage.sh          # L1 gate wrapper
@@ -659,15 +659,15 @@ nix flake update
 | Component | File | Key Lines | Purpose |
 |-----------|------|-----------|---------|
 | Disk creation | [`build/rootfs/fill-disk-usrmerge.nix`](../build/rootfs/fill-disk-usrmerge.nix) | All | Usrmerge-safe dpkg extraction, postinst scripts |
-| Overlay app | [`build/rootfs/apply-overlays.nix`](../build/rootfs/apply-overlays.nix) | All | Single fakeroot session, compose overlays |
-| Overlay defs | [`build/rootfs/overlays/default.nix`](../build/rootfs/overlays/default.nix) | All | Enumerate all 11 overlays |
+| Stage app | [`build/rootfs/apply-stages.nix`](../build/rootfs/apply-stages.nix) | All | Single fakeroot session, compose stages |
+| Stage defs | [`build/stages/default.nix`](../build/stages/default.nix) | All | Enumerate all 11 stages |
 
 ### Stage 3: Tarball Creation (L1 Output)
 
 | Component | File | Key Lines | Purpose |
 |-----------|------|-----------|---------|
 | Tarball builder | [`build/rootfs/tarball.nix`](../build/rootfs/tarball.nix) | All | SOURCE_DATE_EPOCH, tar determinism flags, gzip -n |
-| Entry point | [`build/rootfs/os-image.nix`](../build/rootfs/os-image.nix) | All | Compose base + overlays, call tarball builder |
+| Entry point | [`build/rootfs/os-image.nix`](../build/rootfs/os-image.nix) | All | Compose base + stages, call tarball builder |
 
 ### Stage 4: Bootable Disk Build (L2 Output)
 
@@ -707,7 +707,7 @@ nix flake update
 
 3. **Incremental Builds:**
    - Delta qcow2 between versions (reduce image size)
-   - Lazy evaluation of non-changing overlays
+   - Lazy evaluation of non-changing stages
 
 4. **Architecture Support:**
    - Port to `arm64` (currently `x86_64` only)
