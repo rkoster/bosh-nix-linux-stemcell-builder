@@ -1,16 +1,16 @@
-# Ordered overlay list applied by rootfs/apply-overlays.nix. Order mirrors the
+# Ordered stage list applied by rootfs/apply-stages.nix. Order mirrors the
 # upstream ubuntu_os_stages where it matters (users before group-membership
 # asserts; ssh after base packages; agent + blobstore CLIs late; the
 # IaaS-specific agent-settings last).
 #
-# Interpolating overlays (agent, blobstore-clis) receive their source-built
-# store paths here; the debug-* overlays are intentionally omitted (emergency
+# Interpolating stages (agent, blobstore-clis) receive their source-built
+# store paths here; the debug-* stages are intentionally omitted (emergency
 # use only — see 2026-07-08 findings).
 { callPackage }:
 let
-  bosh-agent = callPackage ../../pkgs/bosh-agent.nix { };
-  monit = callPackage ../../pkgs/monit.nix { };
-  blob = callPackage ../../pkgs/blobstore-clis.nix { };
+  bosh-agent = callPackage ../pkgs/bosh-agent.nix { };
+  monit = callPackage ../pkgs/monit.nix { };
+  blob = callPackage ../pkgs/blobstore-clis.nix { };
 in
 [
   (import ./users.nix { })
