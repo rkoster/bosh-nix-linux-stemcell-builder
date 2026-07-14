@@ -65,6 +65,13 @@
           echo "POC devshell: OVMF_FD=$OVMF_FD"
         '';
       };
+
+      devShells.repro = pkgs.mkShell {
+        packages = with pkgs; [ diffoscopeMinimal xxd coreutils ];
+        shellHook = ''
+          echo "Binary reproducibility devshell: diffoscope $(diffoscope --version 2>/dev/null | head -1)"
+        '';
+      };
     };
   });
 }
