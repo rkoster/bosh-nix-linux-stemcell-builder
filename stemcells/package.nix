@@ -7,7 +7,6 @@
 , coreutils
 , gnutar
 , gzip
-, pigz
 , qemu
 }:
 { bootableDisk
@@ -27,10 +26,12 @@ in
 stdenv.mkDerivation {
   name = "stemcell-packaging";
   
-  buildInputs = [ coreutils gnutar gzip pigz qemu ];
+  buildInputs = [ coreutils gnutar gzip qemu ];
   
   buildCommand = ''
     set -exuo pipefail
+    
+    export SOURCE_DATE_EPOCH=1700000000
     
     # Setup working directory
     mkdir -p $out/work
@@ -39,8 +40,10 @@ stdenv.mkDerivation {
     # Copy qcow2 to root.img (qcow2 file named as root.img, per BOSH OpenStack convention)
     ${coreutils}/bin/cp ${bootableDisk} root.img
     
-    # Create inner image tarball (pigz-compressed, as required by BOSH CPI)
-    ${gnutar}/bin/tar -cf - root.img | ${pigz}/bin/pigz -1 > image
+    # Create inner image tarball (deterministic: sorted, fixed ownership, fixed mtime)
+    ${gnutar}/bin/tar --sort=name --owner=0 --group=0 --numeric-owner \
+      --mtime="@$SOURCE_DATE_EPOCH" --format=gnu -cf - root.img \
+      | ${gzip}/bin/gzip -n -1 > image
     
     # Compute SHA-1 of the inner image tarball (NOT root.img!)
     # This value goes into stemcell.MF
@@ -108,7 +111,11 @@ EOF
     
     # Create final stemcell tarball with exactly the 6 members in spec order
     # (matching upstream stemcell_packager.rb:84)
-    ${gnutar}/bin/tar -zcf stemcell.tgz \
+    # Use deterministic tar flags: sorted, fixed ownership, fixed mtime, single-threaded gzip
+    ${gnutar}/bin/tar --sort=name --owner=0 --group=0 --numeric-owner \
+      --mtime="@$SOURCE_DATE_EPOCH" --format=gnu \
+      --use-compress-program="${gzip}/bin/gzip -n" \
+      -cf stemcell.tgz \
       stemcell.MF \
       packages.txt \
       dev_tools_file_list.txt \
