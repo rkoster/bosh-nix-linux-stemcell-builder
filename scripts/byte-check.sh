@@ -27,6 +27,9 @@ build_once() {
 
 resolve_artifact() {
   local out="$1" match
+  # $artifact_glob is an intentional shell glob pattern (e.g. 'bosh-stemcell-*.tgz');
+  # quoting it would break expansion, so disable the quoting/ls warnings below.
+  # shellcheck disable=SC2012,SC2086
   match=$(cd "$out" && ls -1 $artifact_glob 2>/dev/null | head -1 || true)
   if [ -z "$match" ]; then
     echo "ERROR: no artifact matching '$artifact_glob' in $out" >&2

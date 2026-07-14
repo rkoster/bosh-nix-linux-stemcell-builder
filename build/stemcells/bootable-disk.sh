@@ -2,6 +2,10 @@
 # No shebang: this file is not executed standalone. It is embedded into the
 # VM builder script via `replaceVars` (bootable-disk.nix), which already
 # supplies its own shebang/bash invocation.
+#
+# $out is the standard Nix build output path, provided by the enclosing
+# derivation's builder environment, not assigned in this fragment.
+# shellcheck disable=SC2154
 set -exuo pipefail
 
 export SOURCE_DATE_EPOCH=1700000000
@@ -130,7 +134,7 @@ CHROOT
 @util-linux@/bin/umount /mnt/root 2>/dev/null || true
 
 # Convert raw disk image to qcow2
-mkdir -p $out
+mkdir -p "$out"
 @qemu@/bin/qemu-img convert -f raw -O qcow2 /dev/vda "$out/root.qcow2"
 
 # Verify qcow2
