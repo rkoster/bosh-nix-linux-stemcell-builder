@@ -1,9 +1,9 @@
-# PHASE 1 OS image: fold every config overlay onto the noble rootfs closure.
-# The ordered overlay list lives in ./overlays/default.nix.
+# PHASE 1 OS image: fold every config stage onto the noble rootfs closure.
+# The ordered stage list lives in ../stages/default.nix.
 { callPackage }:
 let
-  applyOverlays = callPackage ./apply-overlays.nix { };
+  applyStages = callPackage ./apply-stages.nix { };
   base = callPackage ./rootfs.nix { };
-  overlays = callPackage ./overlays/default.nix { };
+  stages = callPackage ../stages/default.nix { };
 in
-applyOverlays { inherit base overlays; }
+applyStages { inherit base stages; }
