@@ -23,7 +23,7 @@
         programs.nixfmt.enable = true;
         programs.shfmt.enable = true;
         programs.shellcheck.enable = true;
-        settings.formatter.shfmt.excludes = [ "build/rootfs/overlays/*.sh" ];
+        settings.formatter.shfmt.excludes = [ "build/stages/*.sh" ];
       };
 
       # Explicit outputs: os-image (Phase 1), noble-stemcell + openstack-kvm (Phase 2),
