@@ -1,5 +1,5 @@
 # DEBUG ONLY: Pre-bake SSH public key for emergency debugging of agent connectivity issues.
-# This overlay is temporary and should be removed from production stemcells.
+# This stage is temporary and should be removed from production stemcells.
 # Allows direct SSH access when BOSH agent fails to connect to the director.
 
 { sshPubKey }:

@@ -92,7 +92,7 @@ EOF
     chmod 0600 "$root/var/vcap/monit/alerts.monitrc"
     chown root:root "$root/var/vcap/monit/alerts.monitrc" 2>/dev/null || true
 
-    # empty agent conf (overwritten by openstack-agent-settings overlay)
+    # empty agent conf (overwritten by openstack-agent-settings stage)
     echo '{}' > "$root/var/vcap/bosh/agent.json"
 
     # platform name consumed by bosh-agent.service `-P $(cat .../operating_system)`
