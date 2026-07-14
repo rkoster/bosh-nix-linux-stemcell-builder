@@ -115,7 +115,7 @@ This repository implements a **reproducible, content-addressed BOSH Linux stemce
 
 ### Layer 1: APT Pinning — Reproducible Package Coordinates
 
-**File:** [`ubuntu/apt-pins.nix`](../ubuntu/apt-pins.nix)
+**File:** [`build/ubuntu/apt-pins.nix`](../build/ubuntu/apt-pins.nix)
 
 ```nix
 { fetchurl }:
@@ -146,7 +146,7 @@ in
   - Prevents man-in-the-middle attacks
   - Enables content-addressed caching
 
-**Package List:** [`ubuntu/deb-sets.nix`](../ubuntu/deb-sets.nix)
+**Package List:** [`build/ubuntu/deb-sets.nix`](../build/ubuntu/deb-sets.nix)
 
 Declares all packages to install, organized by category:
 - **bootEssentials:** systemd, linux-image-generic, grub-efi, e2fsprogs, apt
@@ -159,7 +159,7 @@ Declares all packages to install, organized by category:
 
 **Mechanism:** Nix-native resolver that parses Ubuntu Packages indices and recursively resolves `Depends:` fields.
 
-**Entry Point:** [`rootfs/rootfs.nix`](../rootfs/rootfs.nix)
+**Entry Point:** [`build/rootfs/rootfs.nix`](../build/rootfs/rootfs.nix)
 
 ```nix
 mkRootfsTarball {
@@ -210,7 +210,7 @@ mkRootfsTarball {
 - Ignores Recommends/Suggests — only processes `Depends:`, which is correct for minimalism
 - No circular-dependency detection — the package set has no cycles
 
-**Mitigation for Missing Packages:** [`ubuntu/essential.nix`](../ubuntu/essential.nix)
+**Mitigation for Missing Packages:** [`build/ubuntu/essential.nix`](../build/ubuntu/essential.nix)
 
 Pure-Nix parsing of the main Packages index to seed all `Priority: required` or `Essential: yes` packages:
 
@@ -249,7 +249,7 @@ fetchurl {
 
 ### Layer 4: Filesystem Assembly — In-VM dpkg Extraction
 
-**File:** [`rootfs/fill-disk-usrmerge.nix`](../rootfs/fill-disk-usrmerge.nix) (fork of upstream `vmTools.fillDiskWithDebs`)
+**File:** [`build/rootfs/fill-disk-usrmerge.nix`](../build/rootfs/fill-disk-usrmerge.nix) (fork of upstream `vmTools.fillDiskWithDebs`)
 
 **Why a fork?** Upstream doesn't use `--keep-directory-symlink` flag in dpkg extraction, causing symlink clobbering on usr-merged systems (Ubuntu Noble).
 
@@ -302,7 +302,7 @@ fetchurl {
 
 ### Layer 5: OS-Image Tarball — Deterministic Compression
 
-**File:** [`rootfs/tarball.nix`](../rootfs/tarball.nix)
+**File:** [`build/rootfs/tarball.nix`](../build/rootfs/tarball.nix)
 
 Creates the base `rootfs.tar.gz` with deterministic tar and gzip flags:
 
@@ -329,7 +329,7 @@ tar --sort=name --owner=0 --group=0 --numeric-owner \
 
 ### Layer 6: Bootable Disk Image — Fixed UUIDs & Deterministic Build
 
-**File:** [`stemcells/bootable-disk.sh`](../stemcells/bootable-disk.sh)
+**File:** [`build/stemcells/bootable-disk.sh`](../build/stemcells/bootable-disk.sh)
 
 Builds a QEMU-compatible qcow2 disk image with:
 
@@ -376,7 +376,7 @@ Builds a QEMU-compatible qcow2 disk image with:
 
 ### Layer 7: Stemcell Packaging — Final Tarball with SBOM
 
-**File:** [`stemcells/package.nix`](../stemcells/package.nix)
+**File:** [`build/stemcells/package.nix`](../build/stemcells/package.nix)
 
 Packages the disk image into BOSH stemcell format:
 
@@ -445,19 +445,19 @@ fi
 
 After the base filesystem is assembled, 11 configuration overlays are applied in a **single fakeroot session** (avoiding expensive re-extractions):
 
-1. **SSH Configuration** — [`rootfs/overlays/ssh.nix`](../rootfs/overlays/ssh.nix) — server keys, sshd_config
-2. **Sudoers Setup** — [`rootfs/overlays/sudoers-pam.sh`](../rootfs/overlays/sudoers-pam.sh) — vcap user with passwordless sudo
-3. **Audit Daemon** — [`rootfs/overlays/audit.sh`](../rootfs/overlays/audit.sh) — auditd rules and logging
-4. **Systemd Units** — [`rootfs/overlays/systemd-services.nix`](../rootfs/overlays/systemd-services.nix) — BOSH agent service, monitoring
-5. **Hardening** — [`rootfs/overlays/sysctl-limits-env.nix`](../rootfs/overlays/sysctl-limits-env.nix) — sysctl, kernel parameters
-6. **Package Lists** — [`rootfs/overlays/misc-os.sh`](../rootfs/overlays/misc-os.sh) — packages.txt, dev_tools_file_list.txt, SBOM
-7. **Locale & Timezone** — [`rootfs/overlays/misc-os.sh`](../rootfs/overlays/misc-os.sh) — en_US.UTF-8, UTC
-8. **Hostname & Network** — [`rootfs/overlays/misc-os.sh`](../rootfs/overlays/misc-os.sh) — dhclient, hostname resolution
-9. **OpenStack Agent Settings** — [`rootfs/overlays/openstack-agent-settings.nix`](../rootfs/overlays/openstack-agent-settings.nix) — OpenStack-specific cloud-init
-10. **User Accounts** — [`rootfs/overlays/users.nix`](../rootfs/overlays/users.nix) — root, vcap, bosh_ssh_* users
-11. **Debug SSH** — [`rootfs/overlays/debug-ssh-root-login.nix`](../rootfs/overlays/debug-ssh-root-login.nix) — diagnostic SSH access
+1. **SSH Configuration** — [`build/rootfs/overlays/ssh.nix`](../build/rootfs/overlays/ssh.nix) — server keys, sshd_config
+2. **Sudoers Setup** — [`build/rootfs/overlays/sudoers-pam.sh`](../build/rootfs/overlays/sudoers-pam.sh) — vcap user with passwordless sudo
+3. **Audit Daemon** — [`build/rootfs/overlays/audit.sh`](../build/rootfs/overlays/audit.sh) — auditd rules and logging
+4. **Systemd Units** — [`build/rootfs/overlays/systemd-services.nix`](../build/rootfs/overlays/systemd-services.nix) — BOSH agent service, monitoring
+5. **Hardening** — [`build/rootfs/overlays/sysctl-limits-env.nix`](../build/rootfs/overlays/sysctl-limits-env.nix) — sysctl, kernel parameters
+6. **Package Lists** — [`build/rootfs/overlays/misc-os.sh`](../build/rootfs/overlays/misc-os.sh) — packages.txt, dev_tools_file_list.txt, SBOM
+7. **Locale & Timezone** — [`build/rootfs/overlays/misc-os.sh`](../build/rootfs/overlays/misc-os.sh) — en_US.UTF-8, UTC
+8. **Hostname & Network** — [`build/rootfs/overlays/misc-os.sh`](../build/rootfs/overlays/misc-os.sh) — dhclient, hostname resolution
+9. **OpenStack Agent Settings** — [`build/rootfs/overlays/openstack-agent-settings.nix`](../build/rootfs/overlays/openstack-agent-settings.nix) — OpenStack-specific cloud-init
+10. **User Accounts** — [`build/rootfs/overlays/users.nix`](../build/rootfs/overlays/users.nix) — root, vcap, bosh_ssh_* users
+11. **Debug SSH** — [`build/rootfs/overlays/debug-ssh-root-login.nix`](../build/rootfs/overlays/debug-ssh-root-login.nix) — diagnostic SSH access
 
-Orchestrated by: [`rootfs/overlays/default.nix`](../rootfs/overlays/default.nix) and [`rootfs/apply-overlays.nix`](../rootfs/apply-overlays.nix)
+Orchestrated by: [`build/rootfs/overlays/default.nix`](../build/rootfs/overlays/default.nix) and [`build/rootfs/apply-overlays.nix`](../build/rootfs/apply-overlays.nix)
 
 ---
 
@@ -563,7 +563,7 @@ bash scripts/byte-check-stemcell.sh   # L3
 
 ### Updating APT Snapshot
 
-Edit `ubuntu/apt-pins.nix`:
+Edit `build/ubuntu/apt-pins.nix`:
 
 ```nix
 urlPrefix = "https://snapshot.ubuntu.com/ubuntu/20260101T000000Z";
@@ -639,9 +639,9 @@ nix flake update
 ```
 
 **Key Entry Point:** [`flake.nix`](../flake.nix) (lines 37-44)
-- `os-image` package → [`rootfs/os-image.nix`](../rootfs/os-image.nix)
-- `noble-stemcell-disk` package → [`stemcells/openstack-kvm-disk.nix`](../stemcells/openstack-kvm-disk.nix)
-- `noble-stemcell` package → [`stemcells/openstack-kvm.nix`](../stemcells/openstack-kvm.nix)
+- `os-image` package → [`build/rootfs/os-image.nix`](../build/rootfs/os-image.nix)
+- `noble-stemcell-disk` package → [`build/stemcells/openstack-kvm-disk.nix`](../build/stemcells/openstack-kvm-disk.nix)
+- `noble-stemcell` package → [`build/stemcells/openstack-kvm.nix`](../build/stemcells/openstack-kvm.nix)
 
 **Reproducibility devShell:** [`flake.nix`](../flake.nix) (lines 69-74) — provides `diffoscope`, `xxd`, `coreutils`
 
@@ -653,40 +653,40 @@ nix flake update
 
 | Component | File | Key Lines | Purpose |
 |-----------|------|-----------|---------|
-| APT coordinates | [`ubuntu/apt-pins.nix`](../ubuntu/apt-pins.nix) | All | Snapshot URL, component indices, sha256 hashes |
-| Package lists | [`ubuntu/deb-sets.nix`](../ubuntu/deb-sets.nix) | All | bootEssentials, bosh packages, image union |
-| Essential seed | [`ubuntu/essential.nix`](../ubuntu/essential.nix) | All | Parse Packages.xz, seed Priority:required packages |
-| Resolver entry | [`rootfs/rootfs.nix`](../rootfs/rootfs.nix) | All | Call tarball.nix with aptPins + packages |
+| APT coordinates | [`build/ubuntu/apt-pins.nix`](../build/ubuntu/apt-pins.nix) | All | Snapshot URL, component indices, sha256 hashes |
+| Package lists | [`build/ubuntu/deb-sets.nix`](../build/ubuntu/deb-sets.nix) | All | bootEssentials, bosh packages, image union |
+| Essential seed | [`build/ubuntu/essential.nix`](../build/ubuntu/essential.nix) | All | Parse Packages.xz, seed Priority:required packages |
+| Resolver entry | [`build/rootfs/rootfs.nix`](../build/rootfs/rootfs.nix) | All | Call tarball.nix with aptPins + packages |
 
 ### Stage 2: Filesystem Assembly
 
 | Component | File | Key Lines | Purpose |
 |-----------|------|-----------|---------|
-| Disk creation | [`rootfs/fill-disk-usrmerge.nix`](../rootfs/fill-disk-usrmerge.nix) | All | Usrmerge-safe dpkg extraction, postinst scripts |
-| Overlay app | [`rootfs/apply-overlays.nix`](../rootfs/apply-overlays.nix) | All | Single fakeroot session, compose overlays |
-| Overlay defs | [`rootfs/overlays/default.nix`](../rootfs/overlays/default.nix) | All | Enumerate all 11 overlays |
+| Disk creation | [`build/rootfs/fill-disk-usrmerge.nix`](../build/rootfs/fill-disk-usrmerge.nix) | All | Usrmerge-safe dpkg extraction, postinst scripts |
+| Overlay app | [`build/rootfs/apply-overlays.nix`](../build/rootfs/apply-overlays.nix) | All | Single fakeroot session, compose overlays |
+| Overlay defs | [`build/rootfs/overlays/default.nix`](../build/rootfs/overlays/default.nix) | All | Enumerate all 11 overlays |
 
 ### Stage 3: Tarball Creation (L1 Output)
 
 | Component | File | Key Lines | Purpose |
 |-----------|------|-----------|---------|
-| Tarball builder | [`rootfs/tarball.nix`](../rootfs/tarball.nix) | All | SOURCE_DATE_EPOCH, tar determinism flags, gzip -n |
-| Entry point | [`rootfs/os-image.nix`](../rootfs/os-image.nix) | All | Compose base + overlays, call tarball builder |
+| Tarball builder | [`build/rootfs/tarball.nix`](../build/rootfs/tarball.nix) | All | SOURCE_DATE_EPOCH, tar determinism flags, gzip -n |
+| Entry point | [`build/rootfs/os-image.nix`](../build/rootfs/os-image.nix) | All | Compose base + overlays, call tarball builder |
 
 ### Stage 4: Bootable Disk Build (L2 Output)
 
 | Component | File | Key Lines | Purpose |
 |-----------|------|-----------|---------|
-| Disk builder | [`stemcells/bootable-disk.sh`](../stemcells/bootable-disk.sh) | All | mkfs.ext4/vfat (fixed UUID), initramfs repack, grub timestamps |
-| Disk wrapper | [`stemcells/bootable-disk.nix`](../stemcells/bootable-disk.nix) | All | Call bootable-disk.sh, mount disk, populate |
-| Disk packaging | [`stemcells/openstack-kvm-disk.nix`](../stemcells/openstack-kvm-disk.nix) | All | Format disk for OpenStack/KVM, qcow2 conversion |
+| Disk builder | [`build/stemcells/bootable-disk.sh`](../build/stemcells/bootable-disk.sh) | All | mkfs.ext4/vfat (fixed UUID), initramfs repack, grub timestamps |
+| Disk wrapper | [`build/stemcells/bootable-disk.nix`](../build/stemcells/bootable-disk.nix) | All | Call bootable-disk.sh, mount disk, populate |
+| Disk packaging | [`build/stemcells/openstack-kvm-disk.nix`](../build/stemcells/openstack-kvm-disk.nix) | All | Format disk for OpenStack/KVM, qcow2 conversion |
 
 ### Stage 5: Stemcell Packaging (L3 Output)
 
 | Component | File | Key Lines | Purpose |
 |-----------|------|-----------|---------|
-| Stemcell archiver | [`stemcells/package.nix`](../stemcells/package.nix) | All | Drop pigz, use gzip -n, tar determinism flags |
-| Stemcell composer | [`stemcells/openstack-kvm.nix`](../stemcells/openstack-kvm.nix) | All | Package disk + metadata + SBOMs into final .tgz |
+| Stemcell archiver | [`build/stemcells/package.nix`](../build/stemcells/package.nix) | All | Drop pigz, use gzip -n, tar determinism flags |
+| Stemcell composer | [`build/stemcells/openstack-kvm.nix`](../build/stemcells/openstack-kvm.nix) | All | Package disk + metadata + SBOMs into final .tgz |
 
 ### Reproducibility Gates
 
