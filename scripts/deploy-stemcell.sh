@@ -173,15 +173,39 @@ fi
 
 log "✓ Stemcell uploaded"
 
-# Step 5: Deploy manifest
+# Step 5: Deploy manifest (inlined; no separate manifest file on disk)
 log_step "Step 5: Deploying manifest"
 
-if [[ ! -f "./nix-stemcell-poc.yml" ]]; then
-  log_error "Manifest not found: ./nix-stemcell-poc.yml"
-  exit 1
-fi
+if ! run_cmd bosh -d nix-stemcell-poc deploy <(cat <<'YAML'
+name: nix-stemcell-poc
 
-if ! run_cmd bosh -d nix-stemcell-poc deploy ./nix-stemcell-poc.yml -n; then
+releases: []
+
+stemcells:
+  - alias: ubuntu
+    os: ubuntu-noble
+    version: "0.0.5-nix"
+
+instance_groups:
+  - name: vm-instance
+    instances: 1
+    vm_type: default
+    azs:
+      - z1
+    networks:
+      - name: default
+    stemcell: ubuntu
+    jobs: []
+
+variables: []
+
+update:
+  canaries: 0
+  max_in_flight: 1
+  canary_watch_time: 1000-1000
+  update_watch_time: 1000-1000
+YAML
+) -n; then
   log_error "Deployment failed"
   exit 1
 fi
@@ -253,7 +277,7 @@ if [[ "$CLEANUP" == true ]]; then
   fi
   
   log "Deleting stemcell..."
-  if ! run_cmd bosh delete-stemcell ubuntu/0.0.1-nix --force; then
+  if ! run_cmd bosh delete-stemcell ubuntu/0.0.5-nix --force; then
     log_error "Failed to delete stemcell"
     exit 1
   fi
