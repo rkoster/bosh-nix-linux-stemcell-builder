@@ -59,7 +59,7 @@ blobstore CLIs / agent / `monit` under `.#` (one package per file in
 | `build/lib/` | Build library: distro/source pinning (`noble-source.nix`, `noble-distro.nix`), package sets (`base-`, `boot-`, `essential-`, `image-`, `noble-packages.nix`), and the assembly helpers (`mk-rootfs-tarball.nix`, `mk-bootable-disk.nix`, `mk-stemcell.nix`, `mk-apply-overlays.nix`). |
 | `build/lib/overlays/` | Post-unpack filesystem overlays that reproduce the upstream shell stages (ssh, sudoers/pam, audit, rsyslog, sysctl, systemd services, users, agent, OpenStack agent settings, blobstore CLIs). |
 | `build/pkgs/` | Source-built components: the BOSH `agent`, blobstore CLIs (`s3cli`, `gcscli`, `davcli`, `azure-storage-cli`), and `monit` 5.2.5 (built from the vendored tarball). |
-| `scripts/` | `deploy-stemcell.sh` (end-to-end director validation; manifest inlined), `deploy-zookeeper.sh` (zookeeper e2e validation; fetches upstream manifest + inline ops-file), `apt-resolve-noble.sh`, QEMU/OVMF boot smoke tests. |
+| `scripts/` | `deploy-stemcell.sh` (end-to-end director validation; manifest inlined), `deploy-zookeeper.sh` (zookeeper e2e validation; fetches upstream manifest + inline ops-file), `byte-check*.sh` (L1-L3 reproducibility gates), `boot-smoke-test.sh` (QEMU/OVMF boot smoke test). |
 | `docs/specs/`, `docs/plans/` | Dated feasibility findings and milestone plans (the research trail M0–M6). |
 
 ## Selected engineering findings
