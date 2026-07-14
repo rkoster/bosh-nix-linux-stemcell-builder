@@ -13,7 +13,14 @@ makeImageFromDebDist {
 
   # Since we override createRootFS, we must include the full setup (mirror the default but
   # with the seed for start-stop-daemon at /usr/sbin, which is in a usrmerged location).
+  #
+  # The hermetic guard runs FIRST, before mkfs/dpkg-install, so this VM-based
+  # deb-install step self-verifies the same "no network reachable" guarantee
+  # as apply-stages.nix, rather than depending solely on ambient nix.conf
+  # sandbox settings.
   createRootFS = ''
+    ${builtins.readFile ../lib/hermetic-guard.sh}
+
     mkdir /mnt
     ${e2fsprogs}/bin/mkfs.ext4 /dev/vda
     ${util-linux}/bin/mount -t ext4 /dev/vda /mnt
