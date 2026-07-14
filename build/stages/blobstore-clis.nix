@@ -1,6 +1,11 @@
 # Reproduces the upstream `blobstore_clis` stage: install the four source-built
 # CLIs into /var/vcap/bosh/bin as bosh-blobstore-<type>.
-{ davcli, s3cli, gcscli, azureStorageCli }:
+{
+  davcli,
+  s3cli,
+  gcscli,
+  azureStorageCli,
+}:
 {
   name = "blobstore-clis";
   script = ''

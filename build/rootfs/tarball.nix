@@ -2,13 +2,31 @@
 # Reuses the usrmerge-safe fillDiskWithDebs VM (poc/lib/fill-disk-usrmerge.nix); the only
 # difference is the tail: after dpkg install + postInstall, unmount the bind mounts and
 # `tar` /mnt into $out instead of keeping the ext4 disk. No grub, no partitions.
-{ callPackage, lib, util-linux, e2fsprogs, gnutar, gzip, bash }:
+{
+  callPackage,
+  lib,
+  util-linux,
+  e2fsprogs,
+  gnutar,
+  gzip,
+  bash,
+}:
 let
   inherit (callPackage ./fill-disk-usrmerge.nix { }) makeImageFromDebDist;
 in
-{ aptPins, packages, size ? 16384, seedStartStopDaemon ? true }:
+{
+  aptPins,
+  packages,
+  size ? 16384,
+  seedStartStopDaemon ? true,
+}:
 makeImageFromDebDist {
-  inherit (aptPins) name fullName urlPrefix packagesLists;
+  inherit (aptPins)
+    name
+    fullName
+    urlPrefix
+    packagesLists
+    ;
   inherit packages size;
 
   # Since we override createRootFS, we must include the full setup (mirror the default but
@@ -31,7 +49,8 @@ makeImageFromDebDist {
     touch /mnt/.debug
 
     mkdir /mnt/proc /mnt/dev /mnt/sys
-  '' + lib.optionalString seedStartStopDaemon ''
+  ''
+  + lib.optionalString seedStartStopDaemon ''
     mkdir -p /mnt/usr/sbin
     printf '#!/bin/true\n' > /mnt/usr/sbin/start-stop-daemon
     chmod 755 /mnt/usr/sbin/start-stop-daemon

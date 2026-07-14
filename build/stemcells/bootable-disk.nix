@@ -6,30 +6,50 @@
 #  4. Convert raw disk to qcow2
 # Output: $out/root.qcow2
 {
-  vmTools
-, stdenv
-, lib
-, systemdMinimal
-, util-linux
-, dosfstools
-, e2fsprogs
-, qemu
-, gnutar
-, replaceVars
-, callPackage
+  vmTools,
+  stdenv,
+  lib,
+  systemdMinimal,
+  util-linux,
+  dosfstools,
+  e2fsprogs,
+  qemu,
+  gnutar,
+  replaceVars,
+  callPackage,
 }:
 let
   mkVmImage = callPackage ../lib/mkVmImage.nix { };
 in
-{ osImage, name ? "noble-stemcell", size ? 2560 }:
+{
+  osImage,
+  name ? "noble-stemcell",
+  size ? 2560,
+}:
 
 mkVmImage {
   inherit name size;
-  
-  buildCommand = builtins.readFile (replaceVars ./bootable-disk.sh {
-    inherit util-linux dosfstools e2fsprogs qemu gnutar systemdMinimal;
-    osImage = "${osImage}";
-  });
-  
-  nativeBuildInputs = [ systemdMinimal util-linux dosfstools e2fsprogs qemu gnutar ];
+
+  buildCommand = builtins.readFile (
+    replaceVars ./bootable-disk.sh {
+      inherit
+        util-linux
+        dosfstools
+        e2fsprogs
+        qemu
+        gnutar
+        systemdMinimal
+        ;
+      osImage = "${osImage}";
+    }
+  );
+
+  nativeBuildInputs = [
+    systemdMinimal
+    util-linux
+    dosfstools
+    e2fsprogs
+    qemu
+    gnutar
+  ];
 }

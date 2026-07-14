@@ -64,8 +64,8 @@ log_error() {
 
 run_cmd() {
   local cmd=("$@")
-  
-  if [[ "$DRY_RUN" == true ]]; then
+
+  if [[ $DRY_RUN == true ]]; then
     log "[DRY RUN] ${cmd[*]}"
     return 0
   else
@@ -77,27 +77,27 @@ run_cmd() {
 # Parse options
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --build)
-      BUILD_STEMCELL=true
-      shift
-      ;;
-    --cleanup)
-      CLEANUP=true
-      shift
-      ;;
-    --dry-run)
-      DRY_RUN=true
-      shift
-      ;;
-    --help)
-      print_help
-      exit 0
-      ;;
-    *)
-      log_error "Unknown option: $1"
-      print_help
-      exit 1
-      ;;
+  --build)
+    BUILD_STEMCELL=true
+    shift
+    ;;
+  --cleanup)
+    CLEANUP=true
+    shift
+    ;;
+  --dry-run)
+    DRY_RUN=true
+    shift
+    ;;
+  --help)
+    print_help
+    exit 0
+    ;;
+  *)
+    log_error "Unknown option: $1"
+    print_help
+    exit 1
+    ;;
   esac
 done
 
@@ -118,7 +118,7 @@ fi
 # shellcheck source=/dev/null
 source ./bosh.env
 
-if [[ -z "$BOSH_ENVIRONMENT" ]] || [[ -z "$BOSH_CLIENT" ]] || [[ -z "$BOSH_CLIENT_SECRET" ]]; then
+if [[ -z $BOSH_ENVIRONMENT ]] || [[ -z $BOSH_CLIENT ]] || [[ -z $BOSH_CLIENT_SECRET ]]; then
   log_error "BOSH_ENVIRONMENT, BOSH_CLIENT, or BOSH_CLIENT_SECRET not set in ./bosh.env"
   exit 1
 fi
@@ -127,7 +127,7 @@ log "BOSH environment: $BOSH_ENVIRONMENT"
 log "BOSH client: $BOSH_CLIENT"
 
 # Verify director is reachable
-if ! run_cmd bosh env > /dev/null 2>&1; then
+if ! run_cmd bosh env >/dev/null 2>&1; then
   log_error "Cannot reach BOSH director at $BOSH_ENVIRONMENT"
   exit 1
 fi
@@ -135,9 +135,9 @@ fi
 log "✓ BOSH director is reachable"
 
 # Step 2: Build stemcell (if requested)
-if [[ "$BUILD_STEMCELL" == true ]]; then
+if [[ $BUILD_STEMCELL == true ]]; then
   log_step "Step 2: Building Nix stemcell"
-  
+
   if run_cmd nix build .#noble-stemcell -L --no-link; then
     log "✓ Build succeeded"
   else
@@ -154,7 +154,7 @@ if [[ -L ./result ]]; then
   STEMCELL_PATH=$(realpath ./result/bosh-stemcell-*.tgz 2>/dev/null || true)
 fi
 
-if [[ -z "$STEMCELL_PATH" ]] || [[ ! -f "$STEMCELL_PATH" ]]; then
+if [[ -z $STEMCELL_PATH ]] || [[ ! -f $STEMCELL_PATH ]]; then
   log_error "No stemcell found at ./result/bosh-stemcell-*.tgz"
   log_error "Run with --build to build it first, or ensure nix build output exists"
   exit 1
@@ -176,7 +176,8 @@ log "✓ Stemcell uploaded"
 # Step 5: Deploy manifest (inlined; no separate manifest file on disk)
 log_step "Step 5: Deploying manifest"
 
-if ! run_cmd bosh -d nix-stemcell-poc deploy <(cat <<'YAML'
+if ! run_cmd bosh -d nix-stemcell-poc deploy <(
+  cat <<'YAML'
 name: nix-stemcell-poc
 
 releases: []
@@ -220,7 +221,7 @@ RETRY_COUNT=0
 INSTANCE_READY=false
 
 while [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; do
-  if run_cmd bosh -d nix-stemcell-poc vms > /tmp/bosh_vms.txt 2>&1; then
+  if run_cmd bosh -d nix-stemcell-poc vms >/tmp/bosh_vms.txt 2>&1; then
     if grep -q "running\|started" /tmp/bosh_vms.txt; then
       log "Instance is running"
       run_cmd cat /tmp/bosh_vms.txt
@@ -228,7 +229,7 @@ while [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; do
       break
     fi
   fi
-  
+
   RETRY_COUNT=$((RETRY_COUNT + 1))
   if [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; then
     log "Waiting for instance to be ready... (attempt $RETRY_COUNT/$MAX_RETRIES)"
@@ -236,7 +237,7 @@ while [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; do
   fi
 done
 
-if [[ "$INSTANCE_READY" == false ]]; then
+if [[ $INSTANCE_READY == false ]]; then
   log_error "Instance did not reach running state within timeout"
   exit 1
 fi
@@ -267,21 +268,21 @@ log "✓ OS information verified"
 log_step "✅ All verifications passed!"
 
 # Optional cleanup
-if [[ "$CLEANUP" == true ]]; then
+if [[ $CLEANUP == true ]]; then
   log_step "Cleaning up deployment and stemcell"
-  
+
   log "Deleting deployment..."
   if ! run_cmd bosh -d nix-stemcell-poc delete-deployment --force; then
     log_error "Failed to delete deployment"
     exit 1
   fi
-  
+
   log "Deleting stemcell..."
   if ! run_cmd bosh delete-stemcell ubuntu/0.0.5-nix --force; then
     log_error "Failed to delete stemcell"
     exit 1
   fi
-  
+
   log "✓ Cleanup complete"
 fi
 

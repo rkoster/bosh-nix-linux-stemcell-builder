@@ -42,7 +42,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 # Verify qcow2 format is valid
 echo "Validating qcow2 format..."
-if ! qemu-img info "$IMG" > /dev/null 2>&1; then
+if ! qemu-img info "$IMG" >/dev/null 2>&1; then
   echo "❌ qcow2 validation failed"
   exit 1
 fi

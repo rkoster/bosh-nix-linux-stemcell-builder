@@ -39,9 +39,11 @@ resolve_artifact() {
 }
 
 echo "== build A ($target) =="
-outA="$(build_once)"; artA="$(resolve_artifact "$outA")"
+outA="$(build_once)"
+artA="$(resolve_artifact "$outA")"
 echo "== build B ($target) =="
-outB="$(build_once)"; artB="$(resolve_artifact "$outB")"
+outB="$(build_once)"
+artB="$(resolve_artifact "$outB")"
 
 shaA="$(sha256sum "$artA" | cut -d' ' -f1)"
 shaB="$(sha256sum "$artB" | cut -d' ' -f1)"

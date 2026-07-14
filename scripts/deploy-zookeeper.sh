@@ -64,7 +64,7 @@ log_error() {
 run_cmd() {
   local cmd=("$@")
 
-  if [[ "$DRY_RUN" == true ]]; then
+  if [[ $DRY_RUN == true ]]; then
     log "[DRY RUN] ${cmd[*]}"
     return 0
   else
@@ -76,23 +76,23 @@ run_cmd() {
 # Parse options
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --cleanup)
-      CLEANUP=true
-      shift
-      ;;
-    --dry-run)
-      DRY_RUN=true
-      shift
-      ;;
-    --help)
-      print_help
-      exit 0
-      ;;
-    *)
-      log_error "Unknown option: $1"
-      print_help
-      exit 1
-      ;;
+  --cleanup)
+    CLEANUP=true
+    shift
+    ;;
+  --dry-run)
+    DRY_RUN=true
+    shift
+    ;;
+  --help)
+    print_help
+    exit 0
+    ;;
+  *)
+    log_error "Unknown option: $1"
+    print_help
+    exit 1
+    ;;
   esac
 done
 
@@ -112,7 +112,7 @@ fi
 # shellcheck source=/dev/null
 source ./bosh.env
 
-if [[ -z "$BOSH_ENVIRONMENT" ]] || [[ -z "$BOSH_CLIENT" ]] || [[ -z "$BOSH_CLIENT_SECRET" ]]; then
+if [[ -z $BOSH_ENVIRONMENT ]] || [[ -z $BOSH_CLIENT ]] || [[ -z $BOSH_CLIENT_SECRET ]]; then
   log_error "BOSH_ENVIRONMENT, BOSH_CLIENT, or BOSH_CLIENT_SECRET not set in ./bosh.env"
   exit 1
 fi
@@ -121,7 +121,7 @@ log "BOSH environment: $BOSH_ENVIRONMENT"
 log "BOSH client: $BOSH_CLIENT"
 
 # Verify director is reachable
-if ! run_cmd bosh env > /dev/null 2>&1; then
+if ! run_cmd bosh env >/dev/null 2>&1; then
   log_error "Cannot reach BOSH director at $BOSH_ENVIRONMENT"
   exit 1
 fi
@@ -133,7 +133,8 @@ log_step "Step 2: Deploying zookeeper manifest"
 
 if ! run_cmd bosh -d zookeeper deploy \
   <(curl -fsSL "$ZOOKEEPER_MANIFEST_URL") \
-  -o <(cat <<'EOF'
+  -o <(
+    cat <<'EOF'
 - type: replace
   path: /stemcells/0
   value:
@@ -147,7 +148,7 @@ if ! run_cmd bosh -d zookeeper deploy \
   path: /instance_groups/0/instances
   value: 3
 EOF
-) -n; then
+  ) -n; then
   log_error "Deployment failed"
   exit 1
 fi
@@ -168,7 +169,7 @@ log "✓ smoke-tests passed"
 log_step "✅ All verifications passed!"
 
 # Optional cleanup
-if [[ "$CLEANUP" == true ]]; then
+if [[ $CLEANUP == true ]]; then
   log_step "Cleaning up deployment"
 
   log "Deleting deployment..."

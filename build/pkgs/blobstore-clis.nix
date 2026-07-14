@@ -1,40 +1,58 @@
 # Collapse blobstore CLI packages: davcli, s3cli, gcscli, azureStorageCli
-{ lib, buildGoModule, fetchFromGitHub }:
+{
+  lib,
+  buildGoModule,
+  fetchFromGitHub,
+}:
 
 let
   # Shared wrapper for the four BOSH blobstore CLIs
-  mkCli = { pname
-          , version
-          , owner ? "cloudfoundry"
-          , repo
-          , rev ? "v${version}"
-          , hash
-          , vendorHash
-          , subPackages ? [ "." ]
-          , ldflagsVersionVar ? null
-          }:
+  mkCli =
+    {
+      pname,
+      version,
+      owner ? "cloudfoundry",
+      repo,
+      rev ? "v${version}",
+      hash,
+      vendorHash,
+      subPackages ? [ "." ],
+      ldflagsVersionVar ? null,
+    }:
     let
       # Extract the CLI name from pname by removing "bosh-" prefix if present
-      cliName = if lib.hasPrefix "bosh-" pname
-        then lib.removePrefix "bosh-" pname
-        else pname;
+      cliName = if lib.hasPrefix "bosh-" pname then lib.removePrefix "bosh-" pname else pname;
     in
     buildGoModule {
-      inherit pname version vendorHash subPackages;
-      src = fetchFromGitHub { inherit owner repo rev hash; };
+      inherit
+        pname
+        version
+        vendorHash
+        subPackages
+        ;
+      src = fetchFromGitHub {
+        inherit
+          owner
+          repo
+          rev
+          hash
+          ;
+      };
       env.CGO_ENABLED = "0";
       doCheck = false;
-      ldflags =
-        lib.optionals (ldflagsVersionVar != null)
-          [ "-s" "-w" "-X" "${ldflagsVersionVar}=${version}" ];
-      postInstall = lib.optionalString (subPackages != [ "." ])
-        ''
-          # When subPackages is used, the binary is named after the last component of the package path.
-          # Rename it to the CLI name (pname with "bosh-" prefix removed) for consistency.
-          for bin in $out/bin/*; do
-            [ -f "$bin" ] && mv "$bin" "$out/bin/${cliName}"
-          done
-        '';
+      ldflags = lib.optionals (ldflagsVersionVar != null) [
+        "-s"
+        "-w"
+        "-X"
+        "${ldflagsVersionVar}=${version}"
+      ];
+      postInstall = lib.optionalString (subPackages != [ "." ]) ''
+        # When subPackages is used, the binary is named after the last component of the package path.
+        # Rename it to the CLI name (pname with "bosh-" prefix removed) for consistency.
+        for bin in $out/bin/*; do
+          [ -f "$bin" ] && mv "$bin" "$out/bin/${cliName}"
+        done
+      '';
       meta = {
         description = "BOSH blobstore CLI: ${pname}";
         homepage = "https://github.com/${owner}/${repo}";

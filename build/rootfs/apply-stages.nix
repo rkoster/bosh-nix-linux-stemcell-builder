@@ -15,19 +15,40 @@
 #
 # Compression: intermediate gzip is not load-bearing (tar -xf auto-detects), so
 # the single final repack uses parallel `pigz -1`.
-{ stdenv, fakeroot, gnutar, pigz, coreutils, gnused, gawk, gnugrep, findutils }:
+{
+  stdenv,
+  fakeroot,
+  gnutar,
+  pigz,
+  coreutils,
+  gnused,
+  gawk,
+  gnugrep,
+  findutils,
+}:
 { base, stages }:
 let
-  runStages = builtins.concatStringsSep "\n" (map (st: ''
-    echo "=== stage: ${st.name} ==="
-    ( set -euxo pipefail
-      ${st.script}
-    )
-  '') stages);
+  runStages = builtins.concatStringsSep "\n" (
+    map (st: ''
+      echo "=== stage: ${st.name} ==="
+      ( set -euxo pipefail
+        ${st.script}
+      )
+    '') stages
+  );
 in
 stdenv.mkDerivation {
   name = "os-image";
-  nativeBuildInputs = [ fakeroot gnutar pigz coreutils gnused gawk gnugrep findutils ];
+  nativeBuildInputs = [
+    fakeroot
+    gnutar
+    pigz
+    coreutils
+    gnused
+    gawk
+    gnugrep
+    findutils
+  ];
   buildCommand = ''
     fakeroot bash -euxo pipefail <<'IN_FAKEROOT'
     ${builtins.readFile ../lib/hermetic-guard.sh}

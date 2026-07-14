@@ -57,7 +57,7 @@ mkdir -p /mnt/root/{proc,sys,dev}
 @systemdMinimal@/bin/udevadm settle
 
 # Create /etc/fstab
-cat > /mnt/root/etc/fstab <<FSTAB
+cat >/mnt/root/etc/fstab <<FSTAB
 LABEL=root / ext4 defaults 0 1
 LABEL=ESP /boot/efi vfat defaults 0 2
 FSTAB

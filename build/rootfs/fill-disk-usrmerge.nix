@@ -30,114 +30,160 @@
 # `for deb in $debs` scalar iteration silently unpacks nothing under it). Only
 # the extraction command on the marked line differs from upstream. Keep this
 # file in sync with upstream fillDiskWithDebs when bumping nixpkgs.
-{ vmTools, stdenv, lib, dpkg, glibc, xz, gnutar, util-linux, fetchurl }:
+{
+  vmTools,
+  stdenv,
+  lib,
+  dpkg,
+  glibc,
+  xz,
+  gnutar,
+  util-linux,
+  fetchurl,
+}:
 
 let
   storeDir = builtins.storeDir;
 
   fillDiskWithDebs =
-    { size ? 4096, debs, name, fullName, postInstall ? null
-    , createRootFS ? vmTools.defaultCreateRootFS
-    , QEMU_OPTS ? "", memSize ? 512, ... }@args:
+    {
+      size ? 4096,
+      debs,
+      name,
+      fullName,
+      postInstall ? null,
+      createRootFS ? vmTools.defaultCreateRootFS,
+      QEMU_OPTS ? "",
+      memSize ? 512,
+      ...
+    }@args:
 
-    vmTools.runInLinuxVM (stdenv.mkDerivation ({
-      inherit name postInstall QEMU_OPTS memSize;
+    vmTools.runInLinuxVM (
+      stdenv.mkDerivation (
+        {
+          inherit
+            name
+            postInstall
+            QEMU_OPTS
+            memSize
+            ;
 
-      debsFlat = lib.flatten debs;
-      # `debs` is a list-of-lists (dpkg SCC components). structuredAttrs cannot
-      # export a nested list as a usable bash array, so upstream's
-      # `debsGrouped = debs` yields an EMPTY "''${debsGrouped[@]}" and the install
-      # loop runs zero times (no postinst scripts → no /etc/passwd, etc.). We
-      # instead export a FLAT list of strings, one per component (its debs
-      # space-joined); the install loop then re-splits each on whitespace. This
-      # matches the pre-structuredAttrs fork behaviour (debs = intersperse "|").
-      debsGrouped = map (component: builtins.concatStringsSep " " component) debs;
+          debsFlat = lib.flatten debs;
+          # `debs` is a list-of-lists (dpkg SCC components). structuredAttrs cannot
+          # export a nested list as a usable bash array, so upstream's
+          # `debsGrouped = debs` yields an EMPTY "''${debsGrouped[@]}" and the install
+          # loop runs zero times (no postinst scripts → no /etc/passwd, etc.). We
+          # instead export a FLAT list of strings, one per component (its debs
+          # space-joined); the install loop then re-splits each on whitespace. This
+          # matches the pre-structuredAttrs fork behaviour (debs = intersperse "|").
+          debsGrouped = map (component: builtins.concatStringsSep " " component) debs;
 
-      preVM = vmTools.createEmptyImage { inherit size fullName; };
+          preVM = vmTools.createEmptyImage { inherit size fullName; };
 
-      buildCommand = ''
-        ${createRootFS}
+          buildCommand = ''
+            ${createRootFS}
 
-        PATH=$PATH:${lib.makeBinPath [ dpkg glibc xz gnutar ]}
-        set -o pipefail
+            PATH=$PATH:${
+              lib.makeBinPath [
+                dpkg
+                glibc
+                xz
+                gnutar
+              ]
+            }
+            set -o pipefail
 
-        # Unpack the .debs.  We do this to prevent pre-install scripts
-        # (which have lots of circular dependencies) from barfing.
-        echo "unpacking Debs..."
+            # Unpack the .debs.  We do this to prevent pre-install scripts
+            # (which have lots of circular dependencies) from barfing.
+            echo "unpacking Debs..."
 
-        for deb in "''${debsFlat[@]}"; do
-          echo "$deb..."
-          # >>> usrmerge-safe extraction (the one change vs. upstream) <<<
-          # Upstream does `dpkg-deb --extract "$deb" /mnt`, i.e. GNU tar
-          # WITHOUT --keep-directory-symlink. `--keep-directory-symlink` stops
-          # a package's real ./sbin (or ./bin, ./lib) directory entry from
-          # replacing the /sbin -> usr/sbin symlink base-files created. See
-          # file header.
-          dpkg-deb --fsys-tarfile "$deb" \
-            | tar -C /mnt -xf - --keep-directory-symlink
-        done
+            for deb in "''${debsFlat[@]}"; do
+              echo "$deb..."
+              # >>> usrmerge-safe extraction (the one change vs. upstream) <<<
+              # Upstream does `dpkg-deb --extract "$deb" /mnt`, i.e. GNU tar
+              # WITHOUT --keep-directory-symlink. `--keep-directory-symlink` stops
+              # a package's real ./sbin (or ./bin, ./lib) directory entry from
+              # replacing the /sbin -> usr/sbin symlink base-files created. See
+              # file header.
+              dpkg-deb --fsys-tarfile "$deb" \
+                | tar -C /mnt -xf - --keep-directory-symlink
+            done
 
-        # Make the Nix store available in /mnt, because that's where the .debs live.
-        mkdir -p /mnt/inst${storeDir}
-        ${util-linux}/bin/mount -o bind ${storeDir} /mnt/inst${storeDir}
-        ${util-linux}/bin/mount -o bind /proc /mnt/proc
-        ${util-linux}/bin/mount -o bind /dev /mnt/dev
+            # Make the Nix store available in /mnt, because that's where the .debs live.
+            mkdir -p /mnt/inst${storeDir}
+            ${util-linux}/bin/mount -o bind ${storeDir} /mnt/inst${storeDir}
+            ${util-linux}/bin/mount -o bind /proc /mnt/proc
+            ${util-linux}/bin/mount -o bind /dev /mnt/dev
 
-        # Misc. files/directories assumed by various packages.
-        echo "initialising Dpkg DB..."
-        touch /mnt/etc/shells
-        touch /mnt/var/lib/dpkg/status
-        touch /mnt/var/lib/dpkg/available
-        touch /mnt/var/lib/dpkg/diversions
+            # Misc. files/directories assumed by various packages.
+            echo "initialising Dpkg DB..."
+            touch /mnt/etc/shells
+            touch /mnt/var/lib/dpkg/status
+            touch /mnt/var/lib/dpkg/available
+            touch /mnt/var/lib/dpkg/diversions
 
-        # Now install the .debs.  This is basically just to register
-        # them with dpkg and to make their pre/post-install scripts
-        # run.
-        echo "installing Debs..."
+            # Now install the .debs.  This is basically just to register
+            # them with dpkg and to make their pre/post-install scripts
+            # run.
+            echo "installing Debs..."
 
-        export DEBIAN_FRONTEND=noninteractive
+            export DEBIAN_FRONTEND=noninteractive
 
-        for component in "''${debsGrouped[@]}"; do
-          echo
-          echo ">>> INSTALLING COMPONENT: $component"
-          debs=
-          for i in $component; do
-            debs="$debs /inst/$i";
-          done
-          chroot=$(type -tP chroot)
+            for component in "''${debsGrouped[@]}"; do
+              echo
+              echo ">>> INSTALLING COMPONENT: $component"
+              debs=
+              for i in $component; do
+                debs="$debs /inst/$i";
+              done
+              chroot=$(type -tP chroot)
 
-          # Create a fake start-stop-daemon script, as done in debootstrap.
-          mv "/mnt/sbin/start-stop-daemon" "/mnt/sbin/start-stop-daemon.REAL"
-          echo "#!/bin/true" > "/mnt/sbin/start-stop-daemon"
-          chmod 755 "/mnt/sbin/start-stop-daemon"
+              # Create a fake start-stop-daemon script, as done in debootstrap.
+              mv "/mnt/sbin/start-stop-daemon" "/mnt/sbin/start-stop-daemon.REAL"
+              echo "#!/bin/true" > "/mnt/sbin/start-stop-daemon"
+              chmod 755 "/mnt/sbin/start-stop-daemon"
 
-          PATH=/usr/bin:/bin:/usr/sbin:/sbin $chroot /mnt \
-            /usr/bin/dpkg --install --force-all $debs < /dev/null || true
+              PATH=/usr/bin:/bin:/usr/sbin:/sbin $chroot /mnt \
+                /usr/bin/dpkg --install --force-all $debs < /dev/null || true
 
-          # Move the real start-stop-daemon back into its place.
-          mv "/mnt/sbin/start-stop-daemon.REAL" "/mnt/sbin/start-stop-daemon"
-        done
+              # Move the real start-stop-daemon back into its place.
+              mv "/mnt/sbin/start-stop-daemon.REAL" "/mnt/sbin/start-stop-daemon"
+            done
 
-        echo "running post-install script..."
-        eval "$postInstall"
+            echo "running post-install script..."
+            eval "$postInstall"
 
-        rm /mnt/.debug
+            rm /mnt/.debug
 
-        ${util-linux}/bin/umount /mnt/inst${storeDir}
-        ${util-linux}/bin/umount /mnt/proc
-        ${util-linux}/bin/umount /mnt/dev
-        ${util-linux}/bin/umount /mnt
-      '';
+            ${util-linux}/bin/umount /mnt/inst${storeDir}
+            ${util-linux}/bin/umount /mnt/proc
+            ${util-linux}/bin/umount /mnt/dev
+            ${util-linux}/bin/umount /mnt
+          '';
 
-      passthru = { inherit fullName; };
-    } // args));
+          passthru = { inherit fullName; };
+        }
+        // args
+      )
+    );
 
   makeImageFromDebDist =
-    { name, fullName, size ? 4096, urlPrefix
-    , packagesList ? "", packagesLists ? [ packagesList ]
-    , packages, extraPackages ? [], postInstall ? ""
-    , extraDebs ? [], createRootFS ? vmTools.defaultCreateRootFS
-    , QEMU_OPTS ? "", memSize ? 512, ... }@args:
+    {
+      name,
+      fullName,
+      size ? 4096,
+      urlPrefix,
+      packagesList ? "",
+      packagesLists ? [ packagesList ],
+      packages,
+      extraPackages ? [ ],
+      postInstall ? "",
+      extraDebs ? [ ],
+      createRootFS ? vmTools.defaultCreateRootFS,
+      QEMU_OPTS ? "",
+      memSize ? 512,
+      ...
+    }@args:
 
     let
       expr = vmTools.debClosureGenerator {
@@ -145,9 +191,25 @@ let
         packages = packages ++ extraPackages;
       };
     in
-    (fillDiskWithDebs ({
-      inherit name fullName size postInstall createRootFS QEMU_OPTS memSize;
-      debs = import expr { inherit fetchurl; } ++ extraDebs;
-    } // args)) // { inherit expr; };
+    (fillDiskWithDebs (
+      {
+        inherit
+          name
+          fullName
+          size
+          postInstall
+          createRootFS
+          QEMU_OPTS
+          memSize
+          ;
+        debs = import expr { inherit fetchurl; } ++ extraDebs;
+      }
+      // args
+    ))
+    // {
+      inherit expr;
+    };
 in
-{ inherit makeImageFromDebDist fillDiskWithDebs; }
+{
+  inherit makeImageFromDebDist fillDiskWithDebs;
+}

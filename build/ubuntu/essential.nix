@@ -7,7 +7,12 @@
 #   2. a PURE Nix parse selects Priority:required / Essential:yes stanzas.
 # Deterministic function of the pinned index (readFile = IFD, like
 # debClosureGenerator itself).
-{ lib, runCommand, xz, aptPins }:
+{
+  lib,
+  runCommand,
+  xz,
+  aptPins,
+}:
 
 let
   mainIndex = builtins.head aptPins.packagesLists;
@@ -19,17 +24,19 @@ let
   raw = builtins.readFile indexText;
   stanzas = lib.splitString "\n\n" raw;
 
-  isSeed = s:
-    let s' = "\n" + s;
-    in lib.hasInfix "\nPriority: required" s'
-       || lib.hasInfix "\nEssential: yes" s';
+  isSeed =
+    s:
+    let
+      s' = "\n" + s;
+    in
+    lib.hasInfix "\nPriority: required" s' || lib.hasInfix "\nEssential: yes" s';
 
-  nameOf = s:
+  nameOf =
+    s:
     let
       pkgLines = lib.filter (lib.hasPrefix "Package: ") (lib.splitString "\n" s);
     in
-      if pkgLines == [ ] then null
-      else lib.removePrefix "Package: " (lib.head pkgLines);
+    if pkgLines == [ ] then null else lib.removePrefix "Package: " (lib.head pkgLines);
 
   names = lib.filter (n: n != null) (map nameOf (lib.filter isSeed stanzas));
 in

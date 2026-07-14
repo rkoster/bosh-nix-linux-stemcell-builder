@@ -7,10 +7,13 @@
 let
   urlPrefix = "https://snapshot.ubuntu.com/ubuntu/20260101T000000Z";
   codename = "noble";
-  indexUrl = component:
-    "${urlPrefix}/dists/${codename}/${component}/binary-amd64/Packages.xz";
-  fetchIndex = component: sha256:
-    fetchurl { url = indexUrl component; inherit sha256; };
+  indexUrl = component: "${urlPrefix}/dists/${codename}/${component}/binary-amd64/Packages.xz";
+  fetchIndex =
+    component: sha256:
+    fetchurl {
+      url = indexUrl component;
+      inherit sha256;
+    };
 in
 {
   name = "ubuntu-24.04-noble-amd64";

@@ -23,7 +23,12 @@ in
   (import ./systemd-services.nix { })
   (import ./agent.nix { inherit bosh-agent monit; })
   (import ./blobstore-clis.nix {
-    inherit (blob) davcli s3cli gcscli azureStorageCli;
+    inherit (blob)
+      davcli
+      s3cli
+      gcscli
+      azureStorageCli
+      ;
   })
   (import ./openstack-agent-settings.nix { })
 ]

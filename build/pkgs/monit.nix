@@ -7,7 +7,12 @@
 # Reproduces upstream stemcell_builder/stages/bosh_monit/apply.sh:
 #   ./configure --prefix=$bosh_dir --without-ssl CFLAGS="-fcommon"
 # using the vendored source tarball (no network fetch).
-{ lib, pkgsStatic, flex, bison }:
+{
+  lib,
+  pkgsStatic,
+  flex,
+  bison,
+}:
 pkgsStatic.stdenv.mkDerivation rec {
   pname = "monit";
   version = "5.2.5";
@@ -17,7 +22,10 @@ pkgsStatic.stdenv.mkDerivation rec {
   src = ./monit-5.2.5.tar.gz;
 
   # monit's configure generates its lexer/parser at build time.
-  nativeBuildInputs = [ flex bison ];
+  nativeBuildInputs = [
+    flex
+    bison
+  ];
 
   buildInputs = [ pkgsStatic.zlib ];
 
