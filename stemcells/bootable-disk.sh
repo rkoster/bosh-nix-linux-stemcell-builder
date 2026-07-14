@@ -1,5 +1,7 @@
 set -exuo pipefail
 
+export SOURCE_DATE_EPOCH=1700000000
+
 disk=/dev/vda
 
 # Partition the disk using sfdisk with MBR dos label
@@ -18,8 +20,11 @@ EOF
 sleep 1
 
 # Create filesystems
-@dosfstools@/bin/mkfs.vfat -F32 -n ESP "$disk"1
-@e2fsprogs@/bin/mkfs.ext4 "$disk"2 -L root -F
+@dosfstools@/bin/mkfs.vfat -F32 -n ESP -i 44444444 "$disk"1
+@e2fsprogs@/bin/mkfs.ext4 "$disk"2 -L root -F \
+  -U 44444444-4444-4444-4444-444444444444 \
+  -E hash_seed=44444444-4444-4444-4444-444444444444,root_owner=0:0 \
+  -O ^dir_index -q
 
 # Mount filesystems
 mkdir -p /mnt/root
@@ -53,10 +58,22 @@ FSTAB
 chroot /mnt/root /bin/bash -exuo pipefail <<'CHROOT'
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
-# Generate initramfs if not already present
+# Generate a reproducible initramfs (deterministic cpio order + gzip -n).
+export SOURCE_DATE_EPOCH=1700000000
 if [ ! -f /boot/initrd.img ]; then
   update-initramfs -k all -c
 fi
+# Rebuild each initrd deterministically in case initramfs-tools ignored
+# SOURCE_DATE_EPOCH: re-pack the cpio with sorted names and gzip -n.
+for img in /boot/initrd.img-*; do
+  [ -e "$img" ] || continue
+  tmpd=$(mktemp -d)
+  ( cd "$tmpd" && zcat "$img" | cpio -idm --quiet )
+  ( cd "$tmpd" && find . -mindepth 1 -printf '%P\0' | LC_ALL=C sort -z \
+      | cpio -o -H newc --quiet -0 --owner=0:0 \
+      | gzip -n -9 > "$img" )
+  rm -rf "$tmpd"
+done
 
 # Set grub defaults with BOSH-compatible kernel cmdline
 cat > /etc/default/grub <<EOF
@@ -86,6 +103,11 @@ ln -sf /dev/vda2 "/dev/disk/by-uuid/$ROOT_UUID"
 
 # Generate grub.cfg from /etc/default/grub
 update-grub
+
+# Strip any embedded build time from generated grub artifacts.
+find /boot/grub -name '*.mod' -o -name 'grub.cfg' | while read -r f; do
+  touch -d "@$SOURCE_DATE_EPOCH" "$f"
+done
 
 CHROOT
 
