@@ -68,7 +68,14 @@ fi
 for img in /boot/initrd.img-*; do
   [ -e "$img" ] || continue
   tmpd=$(mktemp -d)
-  ( cd "$tmpd" && zcat "$img" | cpio -idm --quiet )
+  # Detect if the initramfs is gzip compressed or plain cpio.
+  if head -c 2 "$img" | od -An -tx1 | grep -q '1f 8b'; then
+    # File is gzip compressed, use zcat
+    ( cd "$tmpd" && zcat "$img" | cpio -idm --quiet ) || true
+  else
+    # File is uncompressed cpio or other format, try direct cpio extraction
+    ( cd "$tmpd" && cpio -idm --quiet < "$img" ) || true
+  fi
   ( cd "$tmpd" && find . -mindepth 1 -printf '%P\0' | LC_ALL=C sort -z \
       | cpio -o -H newc --quiet -0 --owner=0:0 \
       | gzip -n -9 > "$img" )
