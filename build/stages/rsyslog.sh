@@ -220,7 +220,7 @@ WAITSCRIPT
     # the os_image spec "secures rsyslog.conf-referenced files" test can stat
     # them.  rsyslog owns these files (uid/gid of syslog account).
     # In the tarball, fakeroot records the syslog uid/gid (102:102 as per
-    # the group/passwd written by the users overlay).
+     # the group/passwd written by the users stage).
     mkdir -p "$root/var/log"
     for logfile in auth.log syslog cron.log daemon.log kern.log bosh-agent.log; do
       touch "$root/var/log/$logfile"

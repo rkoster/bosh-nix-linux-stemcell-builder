@@ -1,6 +1,6 @@
 # PHASE 1 base: the Noble deb closure as a rootfs tarball ($out/rootfs.tar.gz),
-# BEFORE config overlays. Flake output `noble-rootfs`. os-image.nix folds the
-# overlays onto this.
+# BEFORE config stages. Flake output `noble-rootfs`. os-image.nix folds the
+# stages onto this.
 { callPackage }:
 let
   aptPins = callPackage ../ubuntu/apt-pins.nix { };
