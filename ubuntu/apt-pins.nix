@@ -1,12 +1,11 @@
 # Pinned Ubuntu Noble APT coordinates + Packages.xz indices for
-# makeImageFromDebDist. Folds the former noble-source.nix and noble-distro.nix.
-#
-# snapshot.ubuntu.com was unreachable (503) at build time, so we pin the live
-# archive (accepted by the Serverspec oracle). Trade-off: NOT point-in-time
-# reproducible — the index hashes float with the live archive.
+# makeImageFromDebDist. Pinned to a fixed snapshot.ubuntu.com timestamp for
+# durable, point-in-time reproducibility: superseded .debs stay fetchable
+# and the Packages index does not float.
+# Spec-compliant (ubuntu_spec.rb:35-37 accepts archive/snapshot).
 { fetchurl }:
 let
-  urlPrefix = "http://archive.ubuntu.com/ubuntu";
+  urlPrefix = "https://snapshot.ubuntu.com/ubuntu/20260101T000000Z";
   codename = "noble";
   indexUrl = component:
     "${urlPrefix}/dists/${codename}/${component}/binary-amd64/Packages.xz";
@@ -18,7 +17,7 @@ in
   fullName = "Ubuntu 24.04 Noble (amd64)";
   inherit urlPrefix;
 
-  # main/universe/multiverse indices (order matters: essential.nix scans head=main).
+  # main/universe/multiverse indices. Pinned to snapshot.ubuntu.com/20260101T000000Z.
   packagesLists = [
     (fetchIndex "main" "0l94v46rh8q3m8maim1xq2qkagwrjkalcrilrdww599i22g1jsia")
     (fetchIndex "universe" "16jr0mj275yzaii4khfh07hryf451k80hs6jl748qhwi3gx5g45s")
