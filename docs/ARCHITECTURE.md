@@ -596,19 +596,19 @@ nix flake update
 │   │   ├── rootfs.nix                 # Tarball builder (calls tarball.nix)
 │   │   ├── tarball.nix                # Deterministic tar + gzip → rootfs.tar.gz
 │   │   ├── fill-disk-usrmerge.nix     # In-VM dpkg extraction (usrmerge-safe fork)
-│   │   ├── apply-stages.nix         # Stage application (single fakeroot session)
-│   │   └── stages/
-│   │       ├── default.nix            # Stage orchestration
-│   │       ├── ssh.nix                 # SSH key generation and config
-│   │       ├── sudoers-pam.sh          # Sudoers and PAM setup
-│   │       ├── audit.sh                # Audit daemon configuration
-│   │       ├── systemd-services.nix    # Systemd unit definitions
-│   │       ├── sysctl-limits-env.nix   # Kernel parameters and limits
-│   │       ├── misc-os.sh              # Packages.txt, SBOM, locale, network
-│   │       ├── openstack-agent-settings.nix  # OpenStack cloud-init
-│   │       ├── users.nix               # User account creation
-│   │       ├── debug-ssh-root-login.nix # Debug SSH access
-│   │       └── blobstore-clis.nix      # Blobstore tools (S3, Azure, etc.)
+│   │   └── apply-stages.nix           # Stage application (single fakeroot session)
+│   ├── stages/
+│   │   ├── default.nix                # Stage orchestration
+│   │   ├── ssh.nix                    # SSH key generation and config
+│   │   ├── sudoers-pam.sh             # Sudoers and PAM setup
+│   │   ├── audit.sh                   # Audit daemon configuration
+│   │   ├── systemd-services.nix       # Systemd unit definitions
+│   │   ├── sysctl-limits-env.nix      # Kernel parameters and limits
+│   │   ├── misc-os.sh                 # Packages.txt, SBOM, locale, network
+│   │   ├── openstack-agent-settings.nix  # OpenStack cloud-init
+│   │   ├── users.nix                  # User account creation
+│   │   ├── debug-ssh-root-login.nix   # Debug SSH access
+│   │   └── blobstore-clis.nix         # Blobstore tools (S3, Azure, etc.)
 │   ├── stemcells/
 │   │   ├── bootable-disk.sh           # Disk builder (L2) → root.qcow2
 │   │   ├── bootable-disk.nix          # Wrapper calling bootable-disk.sh
@@ -621,7 +621,8 @@ nix flake update
 │   │   └── blobstore-clis.nix         # Blobstore CLI tools
 │   └── lib/
 │       ├── mkVmImage.nix              # VM image creation utilities
-│       └── mkStage.nix              # Stage composition utilities
+│       ├── mkStage.nix                # Stage composition utilities
+│       └── hermetic-guard.sh          # Network-namespace probe: fails the build if network is reachable
 ├── scripts/
 │   ├── byte-check.sh                  # Generic 2-build reproducibility gate
 │   ├── byte-check-osimage.sh          # L1 gate wrapper
