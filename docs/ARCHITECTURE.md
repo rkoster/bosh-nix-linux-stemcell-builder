@@ -582,38 +582,50 @@ nix flake update
 
 ```
 ├── flake.nix                          # Nix flake entry point (packages, devShells)
-│                                       # L1: os-image → rootfs/os-image.nix
-│                                       # L2: noble-stemcell-disk → stemcells/openstack-kvm-disk.nix
-│                                       # L3: noble-stemcell → stemcells/openstack-kvm.nix
+│                                       # L1: os-image → build/rootfs/os-image.nix
+│                                       # L2: noble-stemcell-disk → build/stemcells/openstack-kvm-disk.nix
+│                                       # L3: noble-stemcell → build/stemcells/openstack-kvm.nix
 ├── flake.lock                         # Reproducible dependency lock (git-tracked)
-├── ubuntu/
-│   ├── apt-pins.nix                   # APT coordinates (snapshot URL + index hashes)
-│   ├── deb-sets.nix                   # Package lists (bootEssentials, bosh, image)
-│   └── essential.nix                  # Essential package seed (pure-Nix parsing)
-├── rootfs/
-│   ├── os-image.nix                   # Entry point (base + overlays) → L1 output
-│   ├── rootfs.nix                     # Tarball builder (calls tarball.nix)
-│   ├── tarball.nix                    # Deterministic tar + gzip → rootfs.tar.gz
-│   ├── fill-disk-usrmerge.nix         # In-VM dpkg extraction (usrmerge-safe fork)
-│   ├── apply-overlays.nix             # Overlay application (single fakeroot session)
-│   └── overlays/
-│       ├── default.nix                # Overlay orchestration
-│       ├── ssh.nix                    # SSH key generation and config
-│       ├── sudoers-pam.sh             # Sudoers and PAM setup
-│       ├── audit.sh                   # Audit daemon configuration
-│       ├── systemd-services.nix       # Systemd unit definitions
-│       ├── sysctl-limits-env.nix      # Kernel parameters and limits
-│       ├── misc-os.sh                 # Packages.txt, SBOM, locale, network
-│       ├── openstack-agent-settings.nix  # OpenStack cloud-init
-│       ├── users.nix                  # User account creation
-│       ├── debug-ssh-root-login.nix   # Debug SSH access
-│       └── blobstore-clis.nix         # Blobstore tools (S3, Azure, etc.)
-├── stemcells/
-│   ├── bootable-disk.sh               # Disk builder (L2) → root.qcow2
-│   ├── bootable-disk.nix              # Wrapper calling bootable-disk.sh
-│   ├── openstack-kvm-disk.nix         # Disk packaging for OpenStack/KVM
-│   ├── openstack-kvm.nix              # L3 stemcell packaging → bosh-stemcell-*.tgz
-│   └── package.nix                    # Stemcell archive creation (tar/gzip determinism)
+├── build/
+│   ├── ubuntu/
+│   │   ├── apt-pins.nix               # APT coordinates (snapshot URL + index hashes)
+│   │   ├── deb-sets.nix               # Package lists (bootEssentials, bosh, image)
+│   │   └── essential.nix              # Essential package seed (pure-Nix parsing)
+│   ├── rootfs/
+│   │   ├── os-image.nix               # Entry point (base + overlays) → L1 output
+│   │   ├── rootfs.nix                 # Tarball builder (calls tarball.nix)
+│   │   ├── tarball.nix                # Deterministic tar + gzip → rootfs.tar.gz
+│   │   ├── fill-disk-usrmerge.nix     # In-VM dpkg extraction (usrmerge-safe fork)
+│   │   ├── apply-overlays.nix         # Overlay application (single fakeroot session)
+│   │   └── overlays/
+│   │       ├── default.nix            # Overlay orchestration
+│   │       ├── ssh.nix                 # SSH key generation and config
+│   │       ├── sudoers-pam.sh          # Sudoers and PAM setup
+│   │       ├── audit.sh                # Audit daemon configuration
+│   │       ├── systemd-services.nix    # Systemd unit definitions
+│   │       ├── sysctl-limits-env.nix   # Kernel parameters and limits
+│   │       ├── misc-os.sh              # Packages.txt, SBOM, locale, network
+│   │       ├── openstack-agent-settings.nix  # OpenStack cloud-init
+│   │       ├── users.nix               # User account creation
+│   │       ├── debug-ssh-root-login.nix # Debug SSH access
+│   │       └── blobstore-clis.nix      # Blobstore tools (S3, Azure, etc.)
+│   ├── stemcells/
+│   │   ├── bootable-disk.sh           # Disk builder (L2) → root.qcow2
+│   │   ├── bootable-disk.nix          # Wrapper calling bootable-disk.sh
+│   │   ├── openstack-kvm-disk.nix     # Disk packaging for OpenStack/KVM
+│   │   ├── openstack-kvm.nix          # L3 stemcell packaging → bosh-stemcell-*.tgz
+│   │   └── package.nix                # Stemcell archive creation (tar/gzip determinism)
+│   ├── pkgs/
+│   │   ├── bosh-agent.nix             # BOSH agent build
+│   │   ├── monit.nix                  # Monit process monitor
+│   │   └── blobstore-clis.nix         # Blobstore CLI tools
+│   ├── lib/
+│   │   ├── mkVmImage.nix              # VM image creation utilities
+│   │   └── mkOverlay.nix              # Overlay composition utilities
+│   └── examples/
+│       ├── noble-bootable.nix         # Standalone bootable disk example
+│       ├── noble-closure.nix          # Dependency resolver inspection
+│       └── hello-vm.nix               # Minimal hello world VM
 ├── scripts/
 │   ├── byte-check.sh                  # Generic 2-build reproducibility gate
 │   ├── byte-check-osimage.sh          # L1 gate wrapper
@@ -623,17 +635,6 @@ nix flake update
 │   ├── ARCHITECTURE.md                # This file
 │   └── superpowers/specs/
 │       └── 2026-07-14-binary-reproducibility-findings.md
-├── pkgs/
-│   ├── bosh-agent.nix                 # BOSH agent build
-│   ├── monit.nix                      # Monit process monitor
-│   └── blobstore-clis.nix             # Blobstore CLI tools
-├── lib/
-│   ├── mkVmImage.nix                  # VM image creation utilities
-│   └── mkOverlay.nix                  # Overlay composition utilities
-├── examples/
-│   ├── noble-bootable.nix             # Standalone bootable disk example
-│   ├── noble-closure.nix              # Dependency resolver inspection
-│   └── hello-vm.nix                   # Minimal hello world VM
 └── .gitignore                         # Ignores bosh.env (secrets), results/, ...
 ```
 
