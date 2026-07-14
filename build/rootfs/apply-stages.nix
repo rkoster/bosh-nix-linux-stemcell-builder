@@ -30,6 +30,8 @@ stdenv.mkDerivation {
   nativeBuildInputs = [ fakeroot gnutar pigz coreutils gnused gawk gnugrep findutils ];
   buildCommand = ''
     fakeroot bash -euxo pipefail <<'IN_FAKEROOT'
+    ${builtins.readFile ../lib/hermetic-guard.sh}
+
     root="$PWD/root"
     mkdir -p "$root"
     tar -xzf ${base}/rootfs.tar.gz -C "$root"
