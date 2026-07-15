@@ -145,15 +145,46 @@ stdenv.mkDerivation {
     # Normalize non-deterministic fields to fixed values derived from
     # SOURCE_DATE_EPOCH=1700000000 (== 2023-11-14T22:13:20Z). --sort-keys makes
     # object key ordering stable across syft runs.
+    #
+    # The rootfs carries duplicate package metadata for some packages (e.g.
+    # cryptography ships both a dist-info/METADATA and an egg-info/PKG-INFO),
+    # so syft emits two catalog entries sharing the same purl but with
+    # different id-hash suffixes. syft then wires dependency edges to one of
+    # those duplicates arbitrarily, and it also emits the relationship /
+    # dependsOn arrays in a non-deterministic order. To get byte-identical
+    # output on rebuilds we canonicalize every dependency reference to the
+    # lexicographically-smallest id sharing the same purl, dedupe the collapsed
+    # edges, and sort the arrays.
     jq --sort-keys '
-      .documentNamespace = "https://bosh.io/stemcell/ubuntu-noble" |
-      .creationInfo.created = "2023-11-14T22:13:20Z" |
-      .name = "bosh-stemcell-ubuntu-noble"
+      (reduce .packages[] as $p ({};
+         (($p.externalRefs // []) | map(select(.referenceType == "purl")) | .[0].referenceLocator) as $purl
+         | if $purl then .[$purl] += [$p.SPDXID] else . end)) as $purlToIds
+      | ($purlToIds | map_values(min)) as $purlCanon
+      | (reduce .packages[] as $p ({};
+           (($p.externalRefs // []) | map(select(.referenceType == "purl")) | .[0].referenceLocator) as $purl
+           | if $purl then .[$p.SPDXID] = $purlCanon[$purl] else . end)) as $idCanon
+      | .documentNamespace = "https://bosh.io/stemcell/ubuntu-noble"
+      | .creationInfo.created = "2023-11-14T22:13:20Z"
+      | .name = "bosh-stemcell-ubuntu-noble"
+      | .relationships |= (map(
+          .spdxElementId = ($idCanon[.spdxElementId] // .spdxElementId)
+          | .relatedSpdxElement = ($idCanon[.relatedSpdxElement] // .relatedSpdxElement)
+        ) | unique)
     ' "$out/metadata/sbom.spdx.json.raw" > "$out/metadata/sbom.spdx.json"
 
     jq --sort-keys '
-      .serialNumber = "urn:uuid:00000000-0000-0000-0000-000000000000" |
-      .metadata.timestamp = "2023-11-14T22:13:20Z"
+      (reduce (.components[]? | select(.purl != null and .purl != "")) as $c ({};
+         .[$c.purl] += [$c."bom-ref"])) as $purlToRefs
+      | ($purlToRefs | map_values(min)) as $purlCanon
+      | (reduce (.components[]? | select(.purl != null and .purl != "")) as $c ({};
+           .[$c."bom-ref"] = $purlCanon[$c.purl])) as $refCanon
+      | def canon($r): $refCanon[$r] // $r;
+        .serialNumber = "urn:uuid:00000000-0000-0000-0000-000000000000"
+      | .metadata.timestamp = "2023-11-14T22:13:20Z"
+      | .dependencies |= (map(
+          .ref = canon(.ref)
+          | .dependsOn = ((.dependsOn // []) | map(canon(.)) | unique)
+        ) | unique | sort_by(.ref))
     ' "$out/metadata/sbom.cdx.json.raw" > "$out/metadata/sbom.cdx.json"
 
     rm -f "$out/metadata/sbom.spdx.json.raw" "$out/metadata/sbom.cdx.json.raw"
