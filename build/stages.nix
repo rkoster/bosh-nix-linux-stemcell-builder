@@ -1,9 +1,9 @@
 { callPackage }:
 let
   # Source-built components that need store-path interpolation
-  bosh-agent = callPackage ../pkgs/bosh-agent.nix { };
-  monit = callPackage ../pkgs/monit.nix { };
-  blob = callPackage ../pkgs/blobstore-clis.nix { };
+  bosh-agent = callPackage ./pkgs/bosh-agent.nix { };
+  monit = callPackage ./pkgs/monit.nix { };
+  blob = callPackage ./pkgs/blobstore-clis.nix { };
 
   # Pure stages (no store-path interpolation): readFile + mkStage pattern
   mkStage = { name, src }:
