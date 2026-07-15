@@ -28,4 +28,3 @@ in
   })
   (import ./stages/openstack-agent-settings.nix { })
 ]
-]
