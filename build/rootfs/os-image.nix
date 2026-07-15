@@ -4,6 +4,6 @@
 let
   applyStages = callPackage ./apply-stages.nix { };
   base = callPackage ./rootfs.nix { };
-  stages = callPackage ../stages.nix { };
+  stages = callPackage ../stages { };
 in
 applyStages { inherit base stages; }
