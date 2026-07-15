@@ -4,7 +4,7 @@
 {
   name = "systemd-services";
   script = ''
-    export STAGE_DIR="${./systemd-services}"
-    bash -euxo pipefail "${./systemd-services/apply.sh}"
+    export STAGE_DIR="${./assets}"
+    bash -euxo pipefail "${./apply.sh}"
   '';
 }
