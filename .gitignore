@@ -3,3 +3,4 @@ result-*
 *.qcow2
 *.log
 bosh.env
+.worktrees/
