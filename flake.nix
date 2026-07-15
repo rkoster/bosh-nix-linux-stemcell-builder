@@ -26,7 +26,6 @@
             programs.nixfmt.enable = true;
             programs.shfmt.enable = true;
             programs.shellcheck.enable = true;
-            settings.formatter.shfmt.excludes = [ "build/stages/*/apply.sh" "build/stages/*/assets/**" ];
           };
 
           # Explicit outputs: os-image (Phase 1), noble-stemcell + openstack-kvm (Phase 2),
