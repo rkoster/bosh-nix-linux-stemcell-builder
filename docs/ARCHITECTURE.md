@@ -445,7 +445,7 @@ fi
 
 After the base filesystem is assembled, 11 configuration stages are applied in a **single fakeroot session** (avoiding expensive re-extractions):
 
-Each stage lives in its own directory under `build/stages/<stage-name>/` with an `apply.sh` script and any necessary asset files. Stages use the `$STAGE_DIR` environment variable to access extracted assets, and store paths are mapped as environment variables (e.g., `BOSH_AGENT_BIN`, `MONIT_BIN`, etc.).
+Each stage lives in its own directory under `build/stages/<stage-name>/`, fully self-contained: `default.nix` (Nix wiring), `apply.sh` (shell implementation), and `assets/` (static content, for stages that have any). Stages use the `$STAGE_DIR` environment variable — pointing at the stage's own `assets/` subdirectory — to access extracted assets, and store paths are mapped as environment variables (e.g., `BOSH_AGENT_BIN`, `MONIT_BIN`, etc.).
 
 1. **SSH Configuration** — [`build/stages/ssh/apply.sh`](../build/stages/ssh/apply.sh) — server keys, sshd_config
 2. **Sudoers Setup** — [`build/stages/sudoers-pam/apply.sh`](../build/stages/sudoers-pam/apply.sh) — vcap user with passwordless sudo
@@ -460,7 +460,7 @@ Each stage lives in its own directory under `build/stages/<stage-name>/` with an
 11. **Blobstore CLIs** — [`build/stages/blobstore-clis/apply.sh`](../build/stages/blobstore-clis/apply.sh) — S3, Azure, GCS, WebDAV clients
 12. **Rsyslog Configuration** — [`build/stages/rsyslog/apply.sh`](../build/stages/rsyslog/apply.sh) — remote syslog setup
 
-Orchestrated by: [`build/stages.nix`](../build/stages.nix) (main coordinator) and [`build/rootfs/apply-stages.nix`](../build/rootfs/apply-stages.nix) (integration)
+Orchestrated by: [`build/stages/default.nix`](../build/stages/default.nix) (main coordinator) and [`build/rootfs/apply-stages.nix`](../build/rootfs/apply-stages.nix) (integration)
 
 ---
 
@@ -600,32 +600,51 @@ nix flake update
 │   │   ├── tarball.nix                # Deterministic tar + gzip → rootfs.tar.gz
 │   │   ├── fill-disk-usrmerge.nix     # In-VM dpkg extraction (usrmerge-safe fork)
 │   │   └── apply-stages.nix           # Stage application (single fakeroot session)
-│   ├── stages.nix                      # Stage orchestration (main coordinator)
 │   ├── stages/
+│   │   ├── default.nix                # Stage orchestration (main coordinator)
 │   │   ├── ssh/
-│   │   │   └── apply.sh               # SSH key generation and config
+│   │   │   ├── default.nix            # Nix wiring (STAGE_DIR, apply.sh invocation)
+│   │   │   ├── apply.sh               # SSH key generation and config
+│   │   │   └── assets/                # sshd config, securetty, etc.
 │   │   ├── sudoers-pam/
-│   │   │   └── apply.sh               # Sudoers and PAM setup
+│   │   │   ├── default.nix
+│   │   │   ├── apply.sh               # Sudoers and PAM setup
+│   │   │   └── assets/
 │   │   ├── audit/
+│   │   │   ├── default.nix
 │   │   │   ├── apply.sh               # Audit daemon configuration
-│   │   │   └── auditctl.sh            # Audit rule templates
+│   │   │   └── assets/                # audit.rules, auditctl.sh, etc.
 │   │   ├── systemd-services/
+│   │   │   ├── default.nix
 │   │   │   ├── apply.sh               # Systemd unit definitions
-│   │   │   └── firstboot.sh           # First-boot initialization
+│   │   │   └── assets/                # unit files, firstboot.sh, etc.
 │   │   ├── sysctl-limits-env/
-│   │   │   └── apply.sh               # Kernel parameters and limits
+│   │   │   ├── default.nix
+│   │   │   ├── apply.sh               # Kernel parameters and limits
+│   │   │   └── assets/
 │   │   ├── misc-os/
-│   │   │   └── apply.sh               # Packages.txt, SBOM, locale, network
+│   │   │   ├── default.nix
+│   │   │   ├── apply.sh               # Packages.txt, SBOM, locale, network
+│   │   │   └── assets/
 │   │   ├── openstack-agent-settings/
-│   │   │   └── apply.sh               # OpenStack cloud-init
+│   │   │   ├── default.nix
+│   │   │   ├── apply.sh               # OpenStack cloud-init
+│   │   │   └── assets/
 │   │   ├── users/
-│   │   │   └── apply.sh               # User account creation
+│   │   │   ├── default.nix
+│   │   │   ├── apply.sh               # User account creation
+│   │   │   └── assets/                # group, passwd, shadow, etc.
 │   │   ├── rsyslog/
-│   │   │   └── apply.sh               # Remote syslog configuration
+│   │   │   ├── default.nix
+│   │   │   ├── apply.sh               # Remote syslog configuration
+│   │   │   └── assets/
 │   │   ├── agent/
-│   │   │   └── apply.sh               # BOSH agent setup
+│   │   │   ├── default.nix            # Receives bosh-agent, monit store paths
+│   │   │   ├── apply.sh               # BOSH agent setup
+│   │   │   └── assets/
 │   │   └── blobstore-clis/
-│   │       └── apply.sh               # Blobstore tools (S3, Azure, GCS, WebDAV)
+│   │       ├── default.nix            # Receives davcli/s3cli/gcscli/azureStorageCli store paths
+│   │       └── apply.sh               # Blobstore tools (S3, Azure, GCS, WebDAV) — no assets
 │   ├── stemcells/
 │   │   ├── bootable-disk.sh           # Disk builder (L2) → root.qcow2
 │   │   ├── bootable-disk.nix          # Wrapper calling bootable-disk.sh
@@ -638,7 +657,6 @@ nix flake update
 │   │   └── blobstore-clis.nix         # Blobstore CLI tools
 │   └── lib/
 │       ├── mkVmImage.nix              # VM image creation utilities
-│       ├── mkStage.nix                # Stage composition utilities
 │       └── hermetic-guard.sh          # Network-namespace probe: fails the build if network is reachable
 ├── scripts/
 │   ├── byte-check.sh                  # Generic 2-build reproducibility gate
@@ -678,7 +696,7 @@ nix flake update
 |-----------|------|-----------|---------|
 | Disk creation | [`build/rootfs/fill-disk-usrmerge.nix`](../build/rootfs/fill-disk-usrmerge.nix) | All | Usrmerge-safe dpkg extraction, postinst scripts |
 | Stage app | [`build/rootfs/apply-stages.nix`](../build/rootfs/apply-stages.nix) | All | Single fakeroot session, compose stages |
-| Stage orchestrator | [`build/stages.nix`](../build/stages.nix) | All | Coordinate all 12 stages |
+| Stage orchestrator | [`build/stages/default.nix`](../build/stages/default.nix) | All | Coordinate all 12 stages |
 | Stage definitions | [`build/stages/*/apply.sh`](../build/stages/) | All | Individual stage implementations
 
 ### Stage 3: Tarball Creation (L1 Output)
