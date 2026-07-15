@@ -1,1 +1,6 @@
-4eee73a9711ab0a5cf4412cef4731df938322de57c4d9bc8509da4c5dbaec456  result/rootfs.tar.gz
+00ea2aa65f12ddae4282d2d7b3c9935e6b004e205eb52894023639ab55a50b77  result/rootfs.tar.gz
+# Rebaselined 2026-07-15 after re-porting all stage scripts to the co-located
+# build/stages/<name>/ layout (see verification note of same date). The previous
+# hash (4eee73a9...) is stale: the refactor had dropped the "$root" target prefix
+# and several operations from every stage. Nix store output: os-image ->
+# /nix/store/...-os-image/rootfs.tar.gz (content-addressed by the derivation).

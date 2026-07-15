@@ -53,7 +53,7 @@ stdenv.mkDerivation {
     fakeroot bash -euxo pipefail <<'IN_FAKEROOT'
     ${builtins.readFile ../lib/hermetic-guard.sh}
 
-    root="$PWD/root"
+    export root="$PWD/root"
     mkdir -p "$root"
     tar -xzf ${base}/rootfs.tar.gz -C "$root"
 
