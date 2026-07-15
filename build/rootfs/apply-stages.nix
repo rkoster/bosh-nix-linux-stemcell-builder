@@ -25,9 +25,15 @@
   gawk,
   gnugrep,
   findutils,
+  dpkg,
+  file,
 }:
 { base, stages }:
 let
+  devToolsPackages = import ./dev-tools-packages.nix;
+  devToolsBashArray = builtins.concatStringsSep " " (
+    map (p: "\"${p}\"") devToolsPackages
+  );
   runStages = builtins.concatStringsSep "\n" (
     map (st: ''
       echo "=== stage: ${st.name} ==="
@@ -48,6 +54,8 @@ stdenv.mkDerivation {
     gawk
     gnugrep
     findutils
+    dpkg
+    file
   ];
   buildCommand = ''
     fakeroot bash -euxo pipefail <<'IN_FAKEROOT'
@@ -85,6 +93,37 @@ stdenv.mkDerivation {
     # reproducible across rebuilds.
     tar --numeric-owner --sort=name --mtime="@$SOURCE_DATE_EPOCH" \
       --one-file-system -C "$root" -cf - . | pigz -1n > "$out/rootfs.tar.gz"
+
+    # --- stemcell metadata: packages.txt + dev_tools_file_list.txt ---------
+    # Generated from the real dpkg admindir baked into $root by the deb-closure
+    # base rootfs. Pure (no VM); dpkg-query only reads the text db.
+    mkdir -p "$out/metadata"
+    admindir="$root/var/lib/dpkg"
+
+    # packages.txt: exact `dpkg -l` column format (upstream bosh_package_list).
+    dpkg-query --admindir="$admindir" -l > "$out/metadata/packages.txt"
+
+    # dev_tools_file_list.txt: for each dev-tool package that is actually
+    # installed, list its regular files (excluding directories and symlinks),
+    # sorted + unique. Mirrors upstream generate_dev_tools_file_list.sh.
+    dev_tools_pkgs=( ${devToolsBashArray} )
+    dev_tools_tmp="$(mktemp)"
+    for pkg in "''${dev_tools_pkgs[@]}"; do
+      if dpkg-query --admindir="$admindir" -W "$pkg" >/dev/null 2>&1; then
+        dpkg-query --admindir="$admindir" -L "$pkg" 2>/dev/null || true
+      fi
+    done > "$dev_tools_tmp" || true
+
+    : > "$out/metadata/dev_tools_file_list.txt"
+    while IFS= read -r p; do
+      [ -n "$p" ] || continue
+      target="$root$p"
+      # keep only regular files that are not symlinks (upstream filters dirs +
+      # symlinks via `file`)
+      if [ -f "$target" ] && [ ! -L "$target" ]; then
+        printf '%s\n' "$p"
+      fi
+    done < "$dev_tools_tmp" | sort -u > "$out/metadata/dev_tools_file_list.txt"
     IN_FAKEROOT
   '';
 }
