@@ -4,9 +4,9 @@
 {
   name = "agent";
   script = ''
-    export STAGE_DIR="${./agent}"
+    export STAGE_DIR="${./assets}"
     export BOSH_AGENT_BIN="${bosh-agent}/bin/main"
     export MONIT_BIN="${monit}/bin/monit"
-    bash -euxo pipefail "${./agent/apply.sh}"
+    bash -euxo pipefail "${./apply.sh}"
   '';
 }
