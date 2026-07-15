@@ -452,15 +452,16 @@ Each stage lives in its own directory under `build/stages/<stage-name>/`, fully 
 3. **Audit Daemon** — [`build/stages/audit/apply.sh`](../build/stages/audit/apply.sh) — auditd rules and logging
 4. **Systemd Units** — [`build/stages/systemd-services/apply.sh`](../build/stages/systemd-services/apply.sh) — BOSH agent service, monitoring
 5. **Hardening** — [`build/stages/sysctl-limits-env/apply.sh`](../build/stages/sysctl-limits-env/apply.sh) — sysctl, kernel parameters
-6. **Package Lists** — [`build/stages/misc-os/apply.sh`](../build/stages/misc-os/apply.sh) — packages.txt, dev_tools_file_list.txt, SBOM
-7. **Locale & Timezone** — [`build/stages/misc-os/apply.sh`](../build/stages/misc-os/apply.sh) — en_US.UTF-8, UTC
-8. **Hostname & Network** — [`build/stages/misc-os/apply.sh`](../build/stages/misc-os/apply.sh) — dhclient, hostname resolution
-9. **OpenStack Agent Settings** — [`build/stages/openstack-agent-settings/apply.sh`](../build/stages/openstack-agent-settings/apply.sh) — OpenStack-specific cloud-init
-10. **User Accounts** — [`build/stages/users/apply.sh`](../build/stages/users/apply.sh) — root, vcap, bosh_ssh_* users
-11. **Blobstore CLIs** — [`build/stages/blobstore-clis/apply.sh`](../build/stages/blobstore-clis/apply.sh) — S3, Azure, GCS, WebDAV clients
-12. **Rsyslog Configuration** — [`build/stages/rsyslog/apply.sh`](../build/stages/rsyslog/apply.sh) — remote syslog setup
+6. **Locale & Timezone** — [`build/stages/misc-os/apply.sh`](../build/stages/misc-os/apply.sh) — en_US.UTF-8, UTC
+7. **Hostname & Network** — [`build/stages/misc-os/apply.sh`](../build/stages/misc-os/apply.sh) — dhclient, hostname resolution
+8. **OpenStack Agent Settings** — [`build/stages/openstack-agent-settings/apply.sh`](../build/stages/openstack-agent-settings/apply.sh) — OpenStack-specific cloud-init
+9. **User Accounts** — [`build/stages/users/apply.sh`](../build/stages/users/apply.sh) — root, vcap, bosh_ssh_* users
+10. **Blobstore CLIs** — [`build/stages/blobstore-clis/apply.sh`](../build/stages/blobstore-clis/apply.sh) — S3, Azure, GCS, WebDAV clients
+11. **Rsyslog Configuration** — [`build/stages/rsyslog/apply.sh`](../build/stages/rsyslog/apply.sh) — remote syslog setup
 
 Orchestrated by: [`build/stages/default.nix`](../build/stages/default.nix) (main coordinator) and [`build/rootfs/apply-stages.nix`](../build/rootfs/apply-stages.nix) (integration)
+
+**Stemcell metadata members** (`packages.txt`, `dev_tools_file_list.txt`, `sbom.spdx.json`, `sbom.cdx.json`) are **not** produced by a config stage. They are generated in [`build/rootfs/apply-stages.nix`](../build/rootfs/apply-stages.nix) after the stages run, directly from the final rootfs tree: `dpkg-query` against the real dpkg admindir (`/var/lib/dpkg`) produces `packages.txt` (exact `dpkg -l` format) and `dev_tools_file_list.txt` (files of installed dev-tool packages, per [`build/rootfs/dev-tools-packages.nix`](../build/rootfs/dev-tools-packages.nix)); `syft` scans the tree to produce both SBOMs (covering the Ubuntu `.deb` packages and the source-built Go binaries), normalized with `jq` for deterministic output. [`build/stemcells/package.nix`](../build/stemcells/package.nix) copies these four files into the stemcell tarball.
 
 ---
 
