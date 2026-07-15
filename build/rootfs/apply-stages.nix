@@ -27,6 +27,8 @@
   findutils,
   dpkg,
   file,
+  syft,
+  jq,
 }:
 { base, stages }:
 let
@@ -56,6 +58,8 @@ stdenv.mkDerivation {
     findutils
     dpkg
     file
+    syft
+    jq
   ];
   buildCommand = ''
     fakeroot bash -euxo pipefail <<'IN_FAKEROOT'
@@ -124,6 +128,35 @@ stdenv.mkDerivation {
         printf '%s\n' "$p"
       fi
     done < "$dev_tools_tmp" | sort -u > "$out/metadata/dev_tools_file_list.txt"
+
+    # --- stemcell SBOMs: sbom.spdx.json + sbom.cdx.json --------------------
+    # One syft scan of the whole rootfs tree covers BOTH the Ubuntu .deb
+    # packages (dpkg cataloger) and the source-built Go binaries (bosh-agent,
+    # blobstore CLIs). SOURCE_DATE_EPOCH is already exported above (1700000000).
+    export HOME="$TMPDIR"
+    export XDG_CACHE_HOME="$TMPDIR/syft-cache"
+    export SYFT_CHECK_FOR_APP_UPDATE=false
+    mkdir -p "$XDG_CACHE_HOME"
+
+    syft scan "dir:$root" \
+      -o "spdx-json=$out/metadata/sbom.spdx.json.raw" \
+      -o "cyclonedx-json=$out/metadata/sbom.cdx.json.raw"
+
+    # Normalize non-deterministic fields to fixed values derived from
+    # SOURCE_DATE_EPOCH=1700000000 (== 2023-11-14T22:13:20Z). --sort-keys makes
+    # object key ordering stable across syft runs.
+    jq --sort-keys '
+      .documentNamespace = "https://bosh.io/stemcell/ubuntu-noble" |
+      .creationInfo.created = "2023-11-14T22:13:20Z" |
+      .name = "bosh-stemcell-ubuntu-noble"
+    ' "$out/metadata/sbom.spdx.json.raw" > "$out/metadata/sbom.spdx.json"
+
+    jq --sort-keys '
+      .serialNumber = "urn:uuid:00000000-0000-0000-0000-000000000000" |
+      .metadata.timestamp = "2023-11-14T22:13:20Z"
+    ' "$out/metadata/sbom.cdx.json.raw" > "$out/metadata/sbom.cdx.json"
+
+    rm -f "$out/metadata/sbom.spdx.json.raw" "$out/metadata/sbom.cdx.json.raw"
     IN_FAKEROOT
   '';
 }
