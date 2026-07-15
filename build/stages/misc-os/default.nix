@@ -4,7 +4,7 @@
 {
   name = "misc-os";
   script = ''
-    export STAGE_DIR="${./misc-os}"
-    bash -euxo pipefail "${./misc-os/apply.sh}"
+    export STAGE_DIR="${./assets}"
+    bash -euxo pipefail "${./apply.sh}"
   '';
 }
