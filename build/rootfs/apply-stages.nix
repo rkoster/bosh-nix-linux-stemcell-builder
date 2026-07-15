@@ -33,9 +33,7 @@
 { base, stages }:
 let
   devToolsPackages = import ./dev-tools-packages.nix;
-  devToolsBashArray = builtins.concatStringsSep " " (
-    map (p: "\"${p}\"") devToolsPackages
-  );
+  devToolsBashArray = builtins.concatStringsSep " " (map (p: "\"${p}\"") devToolsPackages);
   runStages = builtins.concatStringsSep "\n" (
     map (st: ''
       echo "=== stage: ${st.name} ==="
