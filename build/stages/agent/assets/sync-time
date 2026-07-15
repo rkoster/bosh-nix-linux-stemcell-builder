@@ -1,0 +1,3 @@
+#!/bin/bash
+chronyc reload sources
+chronyc waitsync 10

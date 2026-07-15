@@ -1,6 +1,11 @@
-00ea2aa65f12ddae4282d2d7b3c9935e6b004e205eb52894023639ab55a50b77  result/rootfs.tar.gz
+65e0ce339fe86cd7f498970c2768176b130f8c87a81c94967c839a51316e8007  result/rootfs.tar.gz
 # Rebaselined 2026-07-15 after re-porting all stage scripts to the co-located
-# build/stages/<name>/ layout (see verification note of same date). The previous
-# hash (4eee73a9...) is stale: the refactor had dropped the "$root" target prefix
-# and several operations from every stage. Nix store output: os-image ->
-# /nix/store/...-os-image/rootfs.tar.gz (content-addressed by the derivation).
+# build/stages/<name>/ layout (apply.sh + assets/), including the agent and
+# blobstore-clis stages (previously inline). The tar records real build-time
+# mtimes and is NOT bit-reproducible across rebuilds, so this hash tracks the
+# current source tree's cached output only. Content fidelity of the agent +
+# blobstore-clis conversion was verified by extracting both the pre-conversion
+# and post-conversion rootfs trees and confirming IDENTICAL metadata (mode /
+# owner / size / path / symlink target across all 44534 entries) and
+# byte-identical per-file content for every touched path; only mtimes differ.
+# The previous hash (4eee73a9...) was stale after the co-location refactor.
