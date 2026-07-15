@@ -8,7 +8,7 @@
 # shellcheck disable=SC2154
 set -exuo pipefail
 
-export SOURCE_DATE_EPOCH=1700000000
+export SOURCE_DATE_EPOCH=0
 
 disk=/dev/vda
 
@@ -67,7 +67,7 @@ chroot /mnt/root /bin/bash -exuo pipefail <<'CHROOT'
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
 # Generate a reproducible initramfs (deterministic cpio order + gzip -n).
-export SOURCE_DATE_EPOCH=1700000000
+export SOURCE_DATE_EPOCH=0
 if [ ! -f /boot/initrd.img ]; then
   update-initramfs -k all -c
 fi

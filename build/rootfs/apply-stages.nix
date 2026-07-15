@@ -67,7 +67,7 @@ stdenv.mkDerivation {
     # entries by name so the repack is byte-identical across rebuilds. Without
     # this the stage-modified files carry wall-clock mtimes and readdir order is
     # not guaranteed, making the tarball non-deterministic. See the final tar.
-    export SOURCE_DATE_EPOCH=1700000000
+    export SOURCE_DATE_EPOCH=0
 
     export root="$PWD/root"
     mkdir -p "$root"
@@ -130,7 +130,7 @@ stdenv.mkDerivation {
     # --- stemcell SBOMs: sbom.spdx.json + sbom.cdx.json --------------------
     # One syft scan of the whole rootfs tree covers BOTH the Ubuntu .deb
     # packages (dpkg cataloger) and the source-built Go binaries (bosh-agent,
-    # blobstore CLIs). SOURCE_DATE_EPOCH is already exported above (1700000000).
+    # blobstore CLIs). SOURCE_DATE_EPOCH is already exported above (0).
     export HOME="$TMPDIR"
     export XDG_CACHE_HOME="$TMPDIR/syft-cache"
     export SYFT_CHECK_FOR_APP_UPDATE=false
@@ -141,7 +141,7 @@ stdenv.mkDerivation {
       -o "cyclonedx-json=$out/metadata/sbom.cdx.json.raw"
 
     # Normalize non-deterministic fields to fixed values derived from
-    # SOURCE_DATE_EPOCH=1700000000 (== 2023-11-14T22:13:20Z). --sort-keys makes
+    # SOURCE_DATE_EPOCH=0 (== 1970-01-01T00:00:00Z). --sort-keys makes
     # object key ordering stable across syft runs.
     #
     # The rootfs carries duplicate package metadata for some packages (e.g.
@@ -162,7 +162,7 @@ stdenv.mkDerivation {
            (($p.externalRefs // []) | map(select(.referenceType == "purl")) | .[0].referenceLocator) as $purl
            | if $purl then .[$p.SPDXID] = $purlCanon[$purl] else . end)) as $idCanon
       | .documentNamespace = "https://bosh.io/stemcell/ubuntu-noble"
-      | .creationInfo.created = "2023-11-14T22:13:20Z"
+      | .creationInfo.created = "1970-01-01T00:00:00Z"
       | .name = "bosh-stemcell-ubuntu-noble"
       | .relationships |= (map(
           .spdxElementId = ($idCanon[.spdxElementId] // .spdxElementId)
@@ -178,7 +178,7 @@ stdenv.mkDerivation {
            .[$c."bom-ref"] = $purlCanon[$c.purl])) as $refCanon
       | def canon($r): $refCanon[$r] // $r;
         .serialNumber = "urn:uuid:00000000-0000-0000-0000-000000000000"
-      | .metadata.timestamp = "2023-11-14T22:13:20Z"
+      | .metadata.timestamp = "1970-01-01T00:00:00Z"
       | .dependencies |= (map(
           .ref = canon(.ref)
           | .dependsOn = ((.dependsOn // []) | map(canon(.)) | unique)

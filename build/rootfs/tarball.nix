@@ -93,7 +93,7 @@ makeImageFromDebDist {
     # Reproducibility: fixed mtime + sorted entries + gzip -n (no name/mtime
     # header) so the base rootfs tarball is byte-identical across rebuilds.
     # --numeric-owner preserves the real uid/gid; do NOT force --owner/--group.
-    export SOURCE_DATE_EPOCH=1700000000
+    export SOURCE_DATE_EPOCH=0
     ${gnutar}/bin/tar --numeric-owner --sort=name --mtime="@$SOURCE_DATE_EPOCH" \
       --one-file-system -C /mnt -cf - . | ${gzip}/bin/gzip -1n > $out/rootfs.tar.gz
   '';

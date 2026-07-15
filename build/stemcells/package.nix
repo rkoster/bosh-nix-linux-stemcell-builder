@@ -39,7 +39,7 @@ stdenv.mkDerivation {
   buildCommand = ''
         set -exuo pipefail
         
-        export SOURCE_DATE_EPOCH=1700000000
+        export SOURCE_DATE_EPOCH=0
         
         # Setup working directory
         mkdir -p $out/work
