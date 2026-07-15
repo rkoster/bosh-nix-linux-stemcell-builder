@@ -12,6 +12,7 @@
 }:
 {
   bootableDisk,
+  metadata,
   version ? "0.0.1-nix",
   os ? "ubuntu",
   osVersion ? "noble",
@@ -86,15 +87,13 @@ stdenv.mkDerivation {
         
         echo "Manifest created"
         
-        # Create minimal stub files (director checks presence, ignores content per R6)
-        touch packages.txt
-        touch dev_tools_file_list.txt
+        # Copy real metadata members generated from the rootfs (apply-stages.nix)
+        ${coreutils}/bin/cp ${metadata}/metadata/packages.txt packages.txt
+        ${coreutils}/bin/cp ${metadata}/metadata/dev_tools_file_list.txt dev_tools_file_list.txt
+        ${coreutils}/bin/cp ${metadata}/metadata/sbom.spdx.json sbom.spdx.json
+        ${coreutils}/bin/cp ${metadata}/metadata/sbom.cdx.json sbom.cdx.json
         
-        # Create stub SBOM files (empty JSON objects)
-        echo '{}' > sbom.spdx.json
-        echo '{}' > sbom.cdx.json
-        
-        echo "Stub files created"
+        echo "Metadata members copied"
         
         # Verify all 6 required members exist
         expected_files=(
