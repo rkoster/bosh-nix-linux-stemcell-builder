@@ -9,11 +9,10 @@
 {
   name = "blobstore-clis";
   script = ''
-    export STAGE_DIR="${./blobstore-clis}"
     export DAVCLI_BIN="${davcli}/bin/davcli"
     export S3CLI_BIN="${s3cli}/bin/bosh-s3cli"
     export GCSCLI_BIN="${gcscli}/bin/bosh-gcscli"
     export AZURE_STORAGE_CLI_BIN="${azureStorageCli}/bin/bosh-azure-storage-cli"
-    bash -euxo pipefail "${./blobstore-clis/apply.sh}"
+    bash -euxo pipefail "${./apply.sh}"
   '';
 }
