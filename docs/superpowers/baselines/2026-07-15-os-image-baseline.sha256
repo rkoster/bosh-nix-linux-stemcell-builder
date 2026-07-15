@@ -1,11 +1,22 @@
-65e0ce339fe86cd7f498970c2768176b130f8c87a81c94967c839a51316e8007  result/rootfs.tar.gz
-# Rebaselined 2026-07-15 after re-porting all stage scripts to the co-located
-# build/stages/<name>/ layout (apply.sh + assets/), including the agent and
-# blobstore-clis stages (previously inline). The tar records real build-time
-# mtimes and is NOT bit-reproducible across rebuilds, so this hash tracks the
-# current source tree's cached output only. Content fidelity of the agent +
-# blobstore-clis conversion was verified by extracting both the pre-conversion
-# and post-conversion rootfs trees and confirming IDENTICAL metadata (mode /
-# owner / size / path / symlink target across all 44534 entries) and
-# byte-identical per-file content for every touched path; only mtimes differ.
+a0209c8b3a52b5a7b76d4303cb51c8f41c00e8ed36749a1748fd2ff29b068a91  result/rootfs.tar.gz
+# Rebaselined 2026-07-15 after making the rootfs repack deterministic.
+#
+# build/rootfs/apply-stages.nix and build/rootfs/tarball.nix now tar with
+# --sort=name --mtime=@1700000000 (SOURCE_DATE_EPOCH) and pigz/gzip -n, so the
+# archive entry order, timestamps and gzip header no longer vary across
+# rebuilds. Verified with `nix build .#os-image --rebuild` (exit 0, no "differs").
+# --numeric-owner is kept and --owner/--group are intentionally NOT forced to 0
+# (the rootfs legitimately contains non-root files, e.g. /home/vcap = 1000/1000).
+#
+# KNOWN REMAINING GAP (does not affect this hash while the base is cached, but
+# breaks true end-to-end reproducibility if the base rootfs is rebuilt from
+# scratch): the base image ships 12 install-time ephemeral files whose CONTENT
+# is random per build and which survive into the os-image —
+#   /etc/machine-id, /etc/nvme/hostid, /etc/nvme/hostnqn,
+#   /etc/ssh/ssh_host_{rsa,ecdsa,ed25519}_key(.pub),
+#   /var/cache/ldconfig/aux-cache, /var/log/{dpkg,alternatives}.log
+# These need scrubbing in the base build (tarball.nix) to be fully reproducible.
+# Tracked separately because removing SSH host keys / machine-id is a
+# security/behaviour change that must regenerate on first boot.
+#
 # The previous hash (4eee73a9...) was stale after the co-location refactor.

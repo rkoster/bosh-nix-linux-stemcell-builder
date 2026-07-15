@@ -53,6 +53,12 @@ stdenv.mkDerivation {
     fakeroot bash -euxo pipefail <<'IN_FAKEROOT'
     ${builtins.readFile ../lib/hermetic-guard.sh}
 
+    # Reproducibility: normalize every archive mtime to a fixed epoch and sort
+    # entries by name so the repack is byte-identical across rebuilds. Without
+    # this the stage-modified files carry wall-clock mtimes and readdir order is
+    # not guaranteed, making the tarball non-deterministic. See the final tar.
+    export SOURCE_DATE_EPOCH=1700000000
+
     export root="$PWD/root"
     mkdir -p "$root"
     tar -xzf ${base}/rootfs.tar.gz -C "$root"
@@ -72,7 +78,13 @@ stdenv.mkDerivation {
     # breaking the gshadow/shadow security-mode tests.
 
     mkdir -p "$out"
-    tar --numeric-owner --one-file-system -C "$root" -cf - . | pigz -1 > "$out/rootfs.tar.gz"
+    # --numeric-owner preserves the real uid/gid state fakeroot recorded (root
+    # for system files, 1000/1000 for vcap); --sort=name + --mtime give a
+    # deterministic entry order and fixed timestamps; pigz -n omits the gzip
+    # name/mtime header. Together these make rootfs.tar.gz bit-for-bit
+    # reproducible across rebuilds.
+    tar --numeric-owner --sort=name --mtime="@$SOURCE_DATE_EPOCH" \
+      --one-file-system -C "$root" -cf - . | pigz -1n > "$out/rootfs.tar.gz"
     IN_FAKEROOT
   '';
 }
