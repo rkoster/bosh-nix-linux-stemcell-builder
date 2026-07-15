@@ -445,19 +445,22 @@ fi
 
 After the base filesystem is assembled, 11 configuration stages are applied in a **single fakeroot session** (avoiding expensive re-extractions):
 
-1. **SSH Configuration** — [`build/stages/ssh.nix`](../build/stages/ssh.nix) — server keys, sshd_config
-2. **Sudoers Setup** — [`build/stages/sudoers-pam.sh`](../build/stages/sudoers-pam.sh) — vcap user with passwordless sudo
-3. **Audit Daemon** — [`build/stages/audit.sh`](../build/stages/audit.sh) — auditd rules and logging
-4. **Systemd Units** — [`build/stages/systemd-services.nix`](../build/stages/systemd-services.nix) — BOSH agent service, monitoring
-5. **Hardening** — [`build/stages/sysctl-limits-env.nix`](../build/stages/sysctl-limits-env.nix) — sysctl, kernel parameters
-6. **Package Lists** — [`build/stages/misc-os.sh`](../build/stages/misc-os.sh) — packages.txt, dev_tools_file_list.txt, SBOM
-7. **Locale & Timezone** — [`build/stages/misc-os.sh`](../build/stages/misc-os.sh) — en_US.UTF-8, UTC
-8. **Hostname & Network** — [`build/stages/misc-os.sh`](../build/stages/misc-os.sh) — dhclient, hostname resolution
-9. **OpenStack Agent Settings** — [`build/stages/openstack-agent-settings.nix`](../build/stages/openstack-agent-settings.nix) — OpenStack-specific cloud-init
-10. **User Accounts** — [`build/stages/users.nix`](../build/stages/users.nix) — root, vcap, bosh_ssh_* users
-11. **Debug SSH** — [`build/stages/debug-ssh-root-login.nix`](../build/stages/debug-ssh-root-login.nix) — diagnostic SSH access
+Each stage lives in its own directory under `build/stages/<stage-name>/` with an `apply.sh` script and any necessary asset files. Stages use the `$STAGE_DIR` environment variable to access extracted assets, and store paths are mapped as environment variables (e.g., `BOSH_AGENT_BIN`, `MONIT_BIN`, etc.).
 
-Orchestrated by: [`build/stages/default.nix`](../build/stages/default.nix) and [`build/rootfs/apply-stages.nix`](../build/rootfs/apply-stages.nix)
+1. **SSH Configuration** — [`build/stages/ssh/apply.sh`](../build/stages/ssh/apply.sh) — server keys, sshd_config
+2. **Sudoers Setup** — [`build/stages/sudoers-pam/apply.sh`](../build/stages/sudoers-pam/apply.sh) — vcap user with passwordless sudo
+3. **Audit Daemon** — [`build/stages/audit/apply.sh`](../build/stages/audit/apply.sh) — auditd rules and logging
+4. **Systemd Units** — [`build/stages/systemd-services/apply.sh`](../build/stages/systemd-services/apply.sh) — BOSH agent service, monitoring
+5. **Hardening** — [`build/stages/sysctl-limits-env/apply.sh`](../build/stages/sysctl-limits-env/apply.sh) — sysctl, kernel parameters
+6. **Package Lists** — [`build/stages/misc-os/apply.sh`](../build/stages/misc-os/apply.sh) — packages.txt, dev_tools_file_list.txt, SBOM
+7. **Locale & Timezone** — [`build/stages/misc-os/apply.sh`](../build/stages/misc-os/apply.sh) — en_US.UTF-8, UTC
+8. **Hostname & Network** — [`build/stages/misc-os/apply.sh`](../build/stages/misc-os/apply.sh) — dhclient, hostname resolution
+9. **OpenStack Agent Settings** — [`build/stages/openstack-agent-settings/apply.sh`](../build/stages/openstack-agent-settings/apply.sh) — OpenStack-specific cloud-init
+10. **User Accounts** — [`build/stages/users/apply.sh`](../build/stages/users/apply.sh) — root, vcap, bosh_ssh_* users
+11. **Blobstore CLIs** — [`build/stages/blobstore-clis/apply.sh`](../build/stages/blobstore-clis/apply.sh) — S3, Azure, GCS, WebDAV clients
+12. **Rsyslog Configuration** — [`build/stages/rsyslog/apply.sh`](../build/stages/rsyslog/apply.sh) — remote syslog setup
+
+Orchestrated by: [`build/stages.nix`](../build/stages.nix) (main coordinator) and [`build/rootfs/apply-stages.nix`](../build/rootfs/apply-stages.nix) (integration)
 
 ---
 
@@ -597,18 +600,32 @@ nix flake update
 │   │   ├── tarball.nix                # Deterministic tar + gzip → rootfs.tar.gz
 │   │   ├── fill-disk-usrmerge.nix     # In-VM dpkg extraction (usrmerge-safe fork)
 │   │   └── apply-stages.nix           # Stage application (single fakeroot session)
+│   ├── stages.nix                      # Stage orchestration (main coordinator)
 │   ├── stages/
-│   │   ├── default.nix                # Stage orchestration
-│   │   ├── ssh.nix                    # SSH key generation and config
-│   │   ├── sudoers-pam.sh             # Sudoers and PAM setup
-│   │   ├── audit.sh                   # Audit daemon configuration
-│   │   ├── systemd-services.nix       # Systemd unit definitions
-│   │   ├── sysctl-limits-env.nix      # Kernel parameters and limits
-│   │   ├── misc-os.sh                 # Packages.txt, SBOM, locale, network
-│   │   ├── openstack-agent-settings.nix  # OpenStack cloud-init
-│   │   ├── users.nix                  # User account creation
-│   │   ├── debug-ssh-root-login.nix   # Debug SSH access
-│   │   └── blobstore-clis.nix         # Blobstore tools (S3, Azure, etc.)
+│   │   ├── ssh/
+│   │   │   └── apply.sh               # SSH key generation and config
+│   │   ├── sudoers-pam/
+│   │   │   └── apply.sh               # Sudoers and PAM setup
+│   │   ├── audit/
+│   │   │   ├── apply.sh               # Audit daemon configuration
+│   │   │   └── auditctl.sh            # Audit rule templates
+│   │   ├── systemd-services/
+│   │   │   ├── apply.sh               # Systemd unit definitions
+│   │   │   └── firstboot.sh           # First-boot initialization
+│   │   ├── sysctl-limits-env/
+│   │   │   └── apply.sh               # Kernel parameters and limits
+│   │   ├── misc-os/
+│   │   │   └── apply.sh               # Packages.txt, SBOM, locale, network
+│   │   ├── openstack-agent-settings/
+│   │   │   └── apply.sh               # OpenStack cloud-init
+│   │   ├── users/
+│   │   │   └── apply.sh               # User account creation
+│   │   ├── rsyslog/
+│   │   │   └── apply.sh               # Remote syslog configuration
+│   │   ├── agent/
+│   │   │   └── apply.sh               # BOSH agent setup
+│   │   └── blobstore-clis/
+│   │       └── apply.sh               # Blobstore tools (S3, Azure, GCS, WebDAV)
 │   ├── stemcells/
 │   │   ├── bootable-disk.sh           # Disk builder (L2) → root.qcow2
 │   │   ├── bootable-disk.nix          # Wrapper calling bootable-disk.sh
@@ -661,7 +678,8 @@ nix flake update
 |-----------|------|-----------|---------|
 | Disk creation | [`build/rootfs/fill-disk-usrmerge.nix`](../build/rootfs/fill-disk-usrmerge.nix) | All | Usrmerge-safe dpkg extraction, postinst scripts |
 | Stage app | [`build/rootfs/apply-stages.nix`](../build/rootfs/apply-stages.nix) | All | Single fakeroot session, compose stages |
-| Stage defs | [`build/stages/default.nix`](../build/stages/default.nix) | All | Enumerate all 11 stages |
+| Stage orchestrator | [`build/stages.nix`](../build/stages.nix) | All | Coordinate all 12 stages |
+| Stage definitions | [`build/stages/*/apply.sh`](../build/stages/) | All | Individual stage implementations
 
 ### Stage 3: Tarball Creation (L1 Output)
 

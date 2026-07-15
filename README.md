@@ -57,7 +57,7 @@ blobstore CLIs / agent / `monit` under `.#` (one package per file in
 |------|------|
 | `flake.nix` | Flake entry point. Pins `nixpkgs` (`nixos-26.05`); one package per file in `build/pkgs/`. |
 | `build/lib/` | Build library: distro/source pinning (`noble-source.nix`, `noble-distro.nix`), package sets (`base-`, `boot-`, `essential-`, `image-`, `noble-packages.nix`), and the assembly helpers (`mk-rootfs-tarball.nix`, `mk-bootable-disk.nix`, `mk-stemcell.nix`, `mk-apply-stages.nix`). |
-| `build/stages/` | Post-unpack filesystem stages (ssh, sudoers/pam, audit, rsyslog, sysctl, systemd services, users, agent, OpenStack agent settings, blobstore CLIs) mirroring the upstream shell stage names. |
+| `build/stages/` | Post-unpack filesystem stages (each stage is a directory with `apply.sh` + asset files: ssh, sudoers/pam, audit, rsyslog, sysctl, systemd services, users, agent, blobstore CLIs, OpenStack agent settings) mirroring the upstream shell stage names. Orchestrated by `build/stages.nix`. |
 | `build/pkgs/` | Source-built components: the BOSH `agent`, blobstore CLIs (`s3cli`, `gcscli`, `davcli`, `azure-storage-cli`), and `monit` 5.2.5 (built from the vendored tarball). |
 | `scripts/` | `deploy-stemcell.sh` (end-to-end director validation; manifest inlined), `deploy-zookeeper.sh` (zookeeper e2e validation; fetches upstream manifest + inline ops-file), `byte-check*.sh` (L1-L3 reproducibility gates), `boot-smoke-test.sh` (QEMU/OVMF boot smoke test). |
 | `docs/specs/`, `docs/plans/` | Dated feasibility findings and milestone plans (the research trail M0–M6). |
