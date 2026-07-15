@@ -4,7 +4,7 @@
 {
   name = "sudoers-pam";
   script = ''
-    export STAGE_DIR="${./sudoers-pam}"
-    bash -euxo pipefail "${./sudoers-pam/apply.sh}"
+    export STAGE_DIR="${./assets}"
+    bash -euxo pipefail "${./apply.sh}"
   '';
 }

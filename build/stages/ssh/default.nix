@@ -4,7 +4,7 @@
 {
   name = "ssh";
   script = ''
-    export STAGE_DIR="${./ssh}"
-    bash -euxo pipefail "${./ssh/apply.sh}"
+    export STAGE_DIR="${./assets}"
+    bash -euxo pipefail "${./apply.sh}"
   '';
 }

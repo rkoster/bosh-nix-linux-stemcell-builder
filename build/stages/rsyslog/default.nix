@@ -4,7 +4,7 @@
 {
   name = "rsyslog";
   script = ''
-    export STAGE_DIR="${./rsyslog}"
-    bash -euxo pipefail "${./rsyslog/apply.sh}"
+    export STAGE_DIR="${./assets}"
+    bash -euxo pipefail "${./apply.sh}"
   '';
 }

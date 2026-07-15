@@ -4,7 +4,7 @@
 {
   name = "sysctl-limits-env";
   script = ''
-    export STAGE_DIR="${./sysctl-limits-env}"
-    bash -euxo pipefail "${./sysctl-limits-env/apply.sh}"
+    export STAGE_DIR="${./assets}"
+    bash -euxo pipefail "${./apply.sh}"
   '';
 }
