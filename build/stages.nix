@@ -9,7 +9,10 @@ let
   mkStage = { name, src }:
     {
       inherit name;
-      script = builtins.readFile src;
+      script = ''
+        export STAGE_DIR="${./stages}/${name}"
+        ${builtins.readFile src}
+      '';
     };
 in
 [
