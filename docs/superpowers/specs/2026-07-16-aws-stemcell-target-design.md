@@ -41,37 +41,9 @@ Thread a single `infrastructure` argument (default `"openstack"`) through the de
   - `openstack` → `openstack-agent-settings`
   - `aws` → `aws-agent-settings` **and** `udev-aws-rules`
   - `system_aws_modules` deliberately omitted (verified upstream no-op); add a one-line comment noting this.
-- `build/rootfs/os-image.nix`, `apply-stages.nix`, `rootfs.nix`: accept and forward `infrastructure`.
+- `build/rootfs/os-image.nix`, `apply-stages.nix`: accept and forward `infrastructure` to the stage selection.
 
-### 1a. Infrastructure-specific package lists
-
-Add a clean extension point in `build/ubuntu/deb-sets.nix` so IaaS-specific apt packages
-append to the shared base set instead of being hardcoded inline:
-
-```nix
-# Infrastructure-specific package lists, conditionally appended to the base set.
-infraPackages = {
-  openstack = [ ];
-  aws = [ ];
-};
-
-imageFor = infrastructure:
-  lib.unique (
-    essential
-    ++ lib.filter (p: !lib.elem p dropFromBase) base
-    ++ bootEssentials
-    ++ bosh
-    ++ (infraPackages.${infrastructure} or [ ])
-  );
-```
-
-- `build/rootfs/rootfs.nix` takes `infrastructure` and calls `imageFor infrastructure`.
-- Keep `image = imageFor "openstack"` (default) so appending `[ ]` leaves the OpenStack
-  closure byte-identical.
-- `nvme-cli` stays in the shared `bosh` set — it is generic upstream
-  (installed in `base_ubuntu_packages/apply.sh:18`, not an AWS stage), and the
-  `nvme-id` udev helper's `nvme` binary comes from there. Both `infraPackages`
-  lists therefore start empty; the mechanism exists for future IaaS-specific packages.
+The base deb closure is infrastructure-agnostic (no IaaS-specific apt packages — upstream AWS adds none, and `nvme-cli` is already in the shared base via upstream's generic `base_ubuntu_packages`). So `build/rootfs/rootfs.nix` and `build/ubuntu/deb-sets.nix` are **not** parameterized: the base rootfs is built once and shared/cached across both targets; only the stage-apply layer diverges.
 
 ### 2. New AWS stages (under `build/stages/`)
 
@@ -94,7 +66,7 @@ Mirror the existing `openstack-agent-settings` structure (`default.nix` + `apply
 **`udev-aws-rules/`** — ports `udev_aws_rules`:
 - `assets/70-ec2-nvme-devices.rules` → `/etc/udev/rules.d/70-ec2-nvme-devices.rules`.
 - `assets/nvme-id` → `/sbin/nvme-id`, mode `0755` (resolves EBS volume name via `nvme id-ctrl -V`).
-- The `nvme` binary it invokes comes from `nvme-cli`, already in the shared base set (see §1a).
+- The `nvme` binary it invokes comes from `nvme-cli`, already in the shared base set (see §1).
 
 ### 3. Disk image + packaging
 
@@ -142,8 +114,7 @@ New:
 
 Modified (backward-compatible):
 - `build/stages/default.nix` (infrastructure selection)
-- `build/rootfs/os-image.nix`, `build/rootfs/apply-stages.nix`, `build/rootfs/rootfs.nix` (thread `infrastructure`)
-- `build/ubuntu/deb-sets.nix` (`infraPackages` + `imageFor` extension point)
+- `build/rootfs/os-image.nix`, `build/rootfs/apply-stages.nix` (thread `infrastructure` to stage selection)
 - `build/stemcells/bootable-disk.nix`, `build/stemcells/bootable-disk.sh` (`diskFormat` param)
 - `build/stemcells/package.nix` (branch `stemcell_formats` / `disk_format` / `cloud_properties`)
 - `flake.nix` (AWS outputs)
