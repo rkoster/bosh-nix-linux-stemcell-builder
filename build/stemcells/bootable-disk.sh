@@ -133,9 +133,9 @@ CHROOT
 @util-linux@/bin/umount /mnt/root/boot/efi 2>/dev/null || true
 @util-linux@/bin/umount /mnt/root 2>/dev/null || true
 
-# Convert raw disk image to qcow2
+# Convert raw disk image to the requested output format
 mkdir -p "$out"
-@qemu@/bin/qemu-img convert -f raw -O qcow2 /dev/vda "$out/root.qcow2"
+@qemu@/bin/qemu-img convert -f raw -O @diskFormat@ /dev/vda "$out/@diskOutput@"
 
-# Verify qcow2
-@qemu@/bin/qemu-img info "$out/root.qcow2"
+# Verify output image
+@qemu@/bin/qemu-img info "$out/@diskOutput@"
