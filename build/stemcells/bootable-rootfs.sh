@@ -17,13 +17,15 @@ set -exuo pipefail
 export SOURCE_DATE_EPOCH=0
 
 # Plain staging directory. The VM's root is a small tmpfs (memSize RAM), far
-# too small for the ~3 GB rootfs, so back the staging dir with the attached
-# scratch disk (/dev/vda). We carve a tiny FAT partition (p1) for the EFI
-# grub-install (which insists on a real vfat EFI partition) and use the rest
-# (p2, ext4) for the root staging tree. This layout is SCRATCH ONLY: nothing
-# from the on-disk block layout leaks into the deterministic interface --
-# determinism comes from canonicalizing the files and repacking them with a
-# sorted, mtime-pinned tar (root tree) / copying files out ($out/esp) below.
+# too small to hold the extracted rootfs, so back the staging dir with the
+# attached scratch disk (/dev/vda, `size` MiB -- 2560 by default, of which the
+# ~2.5 GiB ext4 partition holds the tree with tight headroom). We carve a tiny
+# FAT partition (p1) for the EFI grub-install (which insists on a real vfat EFI
+# partition) and use the rest (p2, ext4) for the root staging tree. This layout
+# is SCRATCH ONLY: nothing from the on-disk block layout leaks into the
+# deterministic interface -- determinism comes from canonicalizing the files
+# and repacking them with a sorted, mtime-pinned tar (root tree) / copying
+# files out ($out/esp) below.
 stage=/build/stage
 
 @util-linux@/bin/sfdisk /dev/vda <<EOF
@@ -84,6 +86,12 @@ fi
 # Rebuild each initrd deterministically in case initramfs-tools ignored
 # SOURCE_DATE_EPOCH: re-pack the cpio with sorted names, pin every extracted
 # entry's mtime to @0 (fixes initramfs mtime non-determinism), and gzip -n.
+#
+# NOTE: this loop (and the GRUB_CMDLINE_LINUX value below) is duplicated from
+# build/stemcells/bootable-disk.sh; the two will be consolidated when Phase B
+# rewrites bootable-disk.sh. THIS copy additionally pins the mtimes of the
+# extracted cpio entries before repacking (the disk copy does not), so this is
+# the canonical version.
 for img in /boot/initrd.img-*; do
   [ -e "$img" ] || continue
   tmpd=$(mktemp -d)
@@ -126,9 +134,16 @@ ln -sf /dev/vda2 "/dev/disk/by-uuid/44444444-4444-4444-4444-444444444444"
 grub-install --target=i386-pc --boot-directory=/boot --grub-setup=/bin/true \
   --no-floppy /dev/vda || true
 
-if [ ! -f /boot/grub/i386-pc/core.img ]; then
+if [ ! -f /boot/grub/i386-pc/core.img ] || [ ! -f /boot/grub/i386-pc/normal.mod ]; then
   # Fallback: generate core.img directly with grub-mkimage and copy modules.
-  echo "core.img missing after grub-install; falling back to grub-mkimage" >&2
+  # Also assert a representative module (normal.mod) so a partial grub-install
+  # (core.img written but modules missing, or vice versa) cannot silently pass.
+  #
+  # NOTE: the hard-coded --prefix='(,msdos2)/boot/grub' below is NOT necessarily
+  # equivalent to the prefix grub-install auto-detects on the primary path, so
+  # this fallback is a best-effort safety net only -- the primary
+  # --grub-setup=/bin/true path is the tested/expected one.
+  echo "core.img/normal.mod missing after grub-install; falling back to grub-mkimage" >&2
   mkdir -p /boot/grub/i386-pc
   cp -a /usr/lib/grub/i386-pc/*.mod /boot/grub/i386-pc/ 2>/dev/null || true
   cp -a /usr/lib/grub/i386-pc/*.lst /boot/grub/i386-pc/ 2>/dev/null || true

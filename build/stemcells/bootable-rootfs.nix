@@ -12,7 +12,6 @@
 {
   vmTools,
   stdenv,
-  lib,
   systemdMinimal,
   util-linux,
   dosfstools,

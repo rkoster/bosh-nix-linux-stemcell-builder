@@ -1,5 +1,6 @@
 # Thin wrapper over vmTools: build `buildCommand` inside a Linux VM with an
-# attached empty raw disk of `size` MiB. Used by stemcells/bootable-disk.nix.
+# attached empty raw disk of `size` MiB. Used by stemcells/bootable-disk.nix
+# and stemcells/bootable-rootfs.nix.
 { vmTools, stdenv }:
 {
   name,
