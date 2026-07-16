@@ -28,12 +28,14 @@
             programs.shellcheck.enable = true;
           };
 
-          # Explicit outputs: os-image (Phase 1), noble-stemcell + openstack-kvm (Phase 2),
+          # Explicit outputs: os-image / os-image-aws (Phase 1),
+          # noble-stemcell + openstack-kvm and noble-stemcell-aws + aws (Phase 2),
           # and source-built components.
           packages =
             let
               blobstoreClis = pkgs.callPackage ./build/pkgs/blobstore-clis.nix { };
               openstack-kvm = pkgs.callPackage ./build/stemcells/openstack-kvm.nix { };
+              aws = pkgs.callPackage ./build/stemcells/aws.nix { };
             in
             {
               # PHASE 1: OS image (rootfs tarball)
@@ -44,6 +46,12 @@
               noble-stemcell-disk = pkgs.callPackage ./build/stemcells/openstack-kvm-disk.nix { };
               noble-stemcell = openstack-kvm;
               openstack-kvm = openstack-kvm;
+
+              # PHASE 2 (AWS / xen, aws-raw heavy stemcell)
+              os-image-aws = pkgs.callPackage ./build/rootfs/os-image.nix { infrastructure = "aws"; };
+              noble-stemcell-aws-disk = pkgs.callPackage ./build/stemcells/aws-disk.nix { };
+              noble-stemcell-aws = aws;
+              aws = aws;
 
               # Source-built components (names preserved from the old auto-discovery)
               bosh-agent = pkgs.callPackage ./build/pkgs/bosh-agent.nix { };
