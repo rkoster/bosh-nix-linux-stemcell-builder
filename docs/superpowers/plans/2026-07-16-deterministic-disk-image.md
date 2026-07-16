@@ -16,8 +16,8 @@
 
 | File | Responsibility | Change |
 |------|----------------|--------|
-| `build/stemcells/bootable-rootfs.nix` | Phase A derivation: run VM chroot, emit deterministic staging tree (`$out/root/`, `$out/boot/`, `$out/esp/`, `$out/grub-i386-pc/`). | Create |
-| `build/stemcells/bootable-rootfs.sh` | Phase A builder script: extract os-image, chroot to generate initramfs/grub files, canonicalize, wipe volatile state, pin mtimes. Extracted from today's `bootable-disk.sh`. | Create |
+| `build/stemcells/bootable-rootfs.nix` | Phase A derivation: run VM chroot, emit deterministic **canonical tarball** `$out/rootfs-staged.tar.gz` (whole root incl `/boot/grub`) + `$out/esp/` (EFI files). | Create |
+| `build/stemcells/bootable-rootfs.sh` | Phase A builder script: extract os-image, chroot to generate initramfs/grub files, canonicalize, wipe volatile state, pin mtimes, emit canonical tar (`--numeric-owner --xattrs --acls --sort=name --mtime=@0`). Extracted from today's `bootable-disk.sh`. | Create |
 | `build/stemcells/bootable-disk.nix` | Phase B derivation: offline disk assembly. Now takes a `rootfsTree` (Phase A output) instead of raw `osImage`. Keeps `diskFormat`/`diskOutput` contract. | Rewrite |
 | `build/stemcells/bootable-disk.sh` | Phase B builder script: sfdisk fixed id, `mkfs.ext4 -d`, `mkfs.vfat`+`mcopy`, assemble, `grub-bios-setup`, `qemu-img convert`. | Rewrite |
 | `build/stemcells/openstack-kvm-disk.nix` | Wire os-image → `bootable-rootfs` → `bootable-disk` (qcow2). | Modify |
@@ -33,6 +33,23 @@
 ## Phase 0 — De-risking spikes (resolve before implementation)
 
 These three unknowns determine Phase B's exact shape. Each spike is a concrete experiment with a decision gate. Record outcomes in the plan's "Spike results" note (added inline) before starting Phase 2.
+
+### Spike results (executed 2026-07-16) — RESOLVED, with design refinement
+
+**Spike 0.1 (executed):**
+- `libfaketime`, `fakeroot`, `mtools` all resolve in the pinned nixpkgs.
+- `mkfs.ext4 -d` under `faketime` is **byte-deterministic** across two runs (fakeroot: `b4cc179…` twice; real-root: `05bd818…` twice). RC2/RC3/RC6 fix validated.
+- **`fakeroot` masks `security.capability` xattrs** (empty `ea_list`); **real root preserves them**. So `fakeroot` is the wrong tool.
+- **The real `os-image` rootfs carries NO capabilities/xattrs**, but has **209 files with non-root ownership** and **18 setuid/setgid files** (`/etc/shadow-` root:shadow, `crontab` setgid crontab, `ssh-keysign` setuid, `unix_chkpwd`, etc.).
+
+**Critical design refinement (supersedes the File Structure + Phase A/B tasks below):**
+1. **The Nix store normalizes all files to `root:root`, `mtime=1`, and forbids device nodes.** Passing the Phase A rootfs as an *unpacked store tree* would destroy the 209 non-root ownerships → security regression. Therefore **the Phase A → Phase B boundary is a canonical tarball**, mirroring the existing `os-image` `rootfs.tar.gz` pattern — NOT an unpacked `$out/root` tree.
+   - Phase A output: `$out/rootfs-staged.tar.gz` (whole root incl `/boot/grub`, built with `--numeric-owner --xattrs --acls`, sorted, `--mtime=@0`) + `$out/esp/` (EFI files; store-safe, all root-owned).
+   - Phase B: extract the tar to a scratch dir **as root**, then `mkfs.ext4 -d scratch`.
+2. **Phase B runs in `runInLinuxVM` as real root** (Task 2.1b path). Drop `fakeroot`; keep `faketime` (for superblock times). This also gives loopback for `grub-bios-setup` → **Spike 0.3 resolved: VM + real root.**
+3. **Spike 0.2 (grub file-gen) folded into Phase 1:** Phase A already runs the chroot as root in a VM exactly like today, so today's `grub-install` EFI generation is reused as-is; only the BIOS device-write is deferred to Phase B's `grub-bios-setup`. Exact BIOS file-gen flag confirmed during Task 1.2.
+
+**Tasks 0.2 and 0.3 below are therefore NOT executed standalone** — their decisions are recorded above. Task 2.1a is dropped; use Task 2.1b. Where tasks below say `$out/root` (unpacked), read `$out/rootfs-staged.tar.gz` (extract-as-root then `mkfs.ext4 -d`); where they list `fakeroot`, remove it.
 
 ### Task 0.1: Confirm tooling + `mkfs.ext4 -d` ACL/xattr preservation
 
@@ -276,8 +293,13 @@ find "$stage" -exec touch --no-dereference -d "@$SOURCE_DATE_EPOCH" {} +
 find /staging-esp -exec touch --no-dereference -d "@$SOURCE_DATE_EPOCH" {} +
 
 # Emit the deterministic interface consumed by Phase B.
-mkdir -p "$out/root" "$out/esp"
-cp -a "$stage"/. "$out/root/"
+# Root tree MUST travel as a canonical tarball: the Nix store would otherwise
+# normalize the 209 non-root ownerships + setuid/setgid bits to root:root.
+mkdir -p "$out/esp"
+( cd "$stage" && @gnutar@/bin/tar \
+    --numeric-owner --xattrs --acls --sort=name --mtime="@$SOURCE_DATE_EPOCH" \
+    -czf "$out/rootfs-staged.tar.gz" . )
+# ESP contents are all root-owned regular files → store-safe as a plain dir.
 cp -a /staging-esp/. "$out/esp/"
 ```
 
@@ -414,11 +436,11 @@ stdenv.mkDerivation {
 **Files:**
 - Rewrite: `build/stemcells/bootable-disk.nix`
 
-- [ ] **Step 1: Keep `mkVmImage`** (VM gives loopback for `grub-bios-setup`) but take `rootfsTree` instead of `osImage`, and add `libfaketime fakeroot mtools grub2` to inputs. Structure identical to today's `bootable-disk.nix` header, swapping the `osImage` replaceVar for `rootfsTree = "${rootfsTree}"` and `sizeMib = toString size`.
+- [ ] **Step 1: Keep `mkVmImage`** (VM runs as root: preserves ownership/setuid/xattrs during `mkfs.ext4 -d`, and gives loopback for `grub-bios-setup`). Take `rootfsTree` instead of `osImage`, and add `libfaketime mtools grub2` to inputs (NO `fakeroot` — it masks xattrs; real root is used instead). Swap the `osImage` replaceVar for `rootfsTree = "${rootfsTree}"` and add `sizeMib = toString size`. `mkfs.ext4 -O ^dir_index` and the fixed UUID/hash_seed match today's build.
 
 - [ ] **Step 2: Commit** — `git commit -m "feat: Phase B VM builder derivation inputs"`
 
-> Execute **either** 2.1a or 2.1b per the Task 0.3 decision, not both.
+> **Per Spike results: execute Task 2.1b (NOT 2.1a).** Task 2.1a is dropped.
 
 ### Task 2.2: Partition table with fixed MBR id (RC1)
 
@@ -459,23 +481,27 @@ EOF
 **Files:**
 - Modify: `build/stemcells/bootable-disk.sh`
 
-- [ ] **Step 1: Compute the root partition byte length and create the root fs image by populating from the staging tree with `faketime` + `fakeroot`** — no mount, deterministic block layout, fixed superblock times.
+- [ ] **Step 1: Compute the root partition byte length, extract the staged rootfs tarball as root, then create the root fs image by populating from that tree with `faketime`** — no mount, deterministic block layout, fixed superblock times. Real root (VM) preserves the 209 non-root ownerships + setuid/setgid; no `fakeroot` (it masks xattrs).
 
 ```bash
+# Extract the canonical rootfs tarball (as root, preserving ownership/xattrs).
+scratch="$work/rootfs"
+mkdir -p "$scratch"
+@gnutar@/bin/tar --numeric-owner --xattrs --acls \
+  -xzf @rootfsTree@/rootfs-staged.tar.gz -C "$scratch"
+
 # Root partition = disk end - 100352 sectors, in bytes (multiple of 512).
 root_start=100352
 disk_sectors=$(( @sizeMib@ * 1024 * 1024 / 512 ))
 root_bytes=$(( (disk_sectors - root_start) * 512 ))
 
 @libfaketime@/bin/faketime -f "1970-01-01 00:00:01" \
-  @fakeroot@/bin/fakeroot @e2fsprogs@/bin/mkfs.ext4 -q -F -L root \
+  @e2fsprogs@/bin/mkfs.ext4 -q -F -L root \
     -U 44444444-4444-4444-4444-444444444444 \
     -E hash_seed=44444444-4444-4444-4444-444444444444,root_owner=0:0 \
     -O ^dir_index \
-    -d @rootfsTree@/root "$root" "$((root_bytes / 1024))k"
+    -d "$scratch" "$root" "$((root_bytes / 1024))k"
 ```
-
-If Spike 0.1 found `-d` drops xattrs, replace this step with: create an empty sized ext4, then `faketime fakeroot` a mount-free `tar`→`debugfs`/`e2cp` path as recorded in the Spike 0.1 note. (Only reachable if the spike failed; primary path is `-d`.)
 
 - [ ] **Step 2: Commit** — `git commit -am "feat: populate ext4 root offline with mkfs.ext4 -d"`
 
@@ -506,13 +532,14 @@ If Spike 0.1 found `-d` drops xattrs, replace this step with: create an empty si
 @util-linux@/bin/dd if="$esp"  of="$raw" bs=512 seek=2048   conv=notrunc
 @util-linux@/bin/dd if="$root" of="$raw" bs=512 seek=100352 conv=notrunc
 
-# Embed core.img into the MBR gap (highest-risk step; mechanism from Spike 0.3).
+# Embed core.img into the MBR gap (highest-risk step). Phase B runs in a VM
+# as root, so grub-bios-setup can use the assembled file (or a loop device).
 @grub2@/bin/grub-bios-setup \
-  --directory=@rootfsTree@/root/boot/grub/i386-pc \
+  --directory="$scratch/boot/grub/i386-pc" \
   --device-map=/dev/null "$raw"
 ```
 
-If Spike 0.3 required a loop device (Task 2.1b path), replace the `grub-bios-setup` line with a `losetup -Pf --show "$raw"` block that runs `grub-bios-setup` against the loop device then `losetup -d`, as recorded in the Spike 0.3 note.
+If `grub-bios-setup` refuses the plain file, wrap it with `losetup -Pf --show "$raw"` and run against the loop device, then `losetup -d` (the VM builder is root, so loopback is available).
 
 - [ ] **Step 2: Commit** — `git commit -am "feat: assemble partitions and embed BIOS grub"`
 
