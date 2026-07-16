@@ -24,6 +24,35 @@ let
   # Compute stemcell archive filename per upstream convention:
   # bosh-stemcell-VERSION-INFRASTRUCTURE-HYPERVISOR-OS-OSVERSION.tgz
   stemcellFilename = "bosh-stemcell-${version}-${infrastructure}-${hypervisor}-${os}-${osVersion}.tgz";
+
+  # Infrastructure-specific manifest fields (mirrors upstream
+  # bosh/stemcell/infrastructure.rb + stemcell_packager.rb).
+  #
+  # INDENTATION CONTRACT (load-bearing): this value CARRIES its own
+  # 2-space YAML list indent ("  - ..."). Its heredoc placeholder line
+  # (`${stemcellFormatsYaml}`) sits at base indent, which renders at
+  # column 0 after Nix ''-string common-indent stripping. Changing
+  # either the leading spaces on that heredoc line OR the spaces inside
+  # this value will break the manifest YAML nesting.
+  stemcellFormatsYaml =
+    if infrastructure == "aws" then "  - aws-raw" else "  - openstack-qcow2\n  - openstack-raw";
+
+  diskFormatValue = if infrastructure == "aws" then "raw" else "qcow2";
+
+  # Trailing cloud_properties entries appended after `architecture`
+  # (upstream additional_cloud_properties).
+  #
+  # INDENTATION CONTRACT (load-bearing): this value does NOT carry a
+  # leading indent for its first line — the heredoc placeholder line
+  # (`${extraCloudPropsYaml}`, 6 spaces → 2 after ''-strip) supplies the
+  # cloud_properties key level. Any second line embeds `\n  ` to hold
+  # that same 2-space level. Do not alter the heredoc placeholder line's
+  # leading whitespace or the embedded `\n  ` here.
+  extraCloudPropsYaml =
+    if infrastructure == "aws" then
+      "root_device_name: /dev/sda1\n  boot_mode: uefi-preferred"
+    else
+      "auto_disk_config: true";
 in
 
 stdenv.mkDerivation {
@@ -69,20 +98,19 @@ stdenv.mkDerivation {
     sha1: $imageSha1
     operating_system: ${os}-${osVersion}
     stemcell_formats:
-      - openstack-qcow2
-      - openstack-raw
+    ${stemcellFormatsYaml}
     cloud_properties:
       name: bosh-${infrastructure}-${hypervisor}-${os}-${osVersion}
       version: ${version}
       infrastructure: ${infrastructure}
       hypervisor: ${hypervisor}
       disk: 5120
-      disk_format: qcow2
+      disk_format: ${diskFormatValue}
       container_format: bare
       os_type: linux
       os_distro: ${os}
       architecture: x86_64
-      auto_disk_config: true
+      ${extraCloudPropsYaml}
     EOF
         
         echo "Manifest created"
