@@ -87,16 +87,15 @@ dd if="$espimg" of="$raw" bs=512 seek=${esp_start} conv=notrunc
 dd if="$rootimg" of="$raw" bs=512 seek=${root_start} conv=notrunc
 
 # 8. Embed BIOS grub (boot.img in the MBR + core.img in the post-MBR gap) using
-#    the i386-pc modules from the extracted tarball. grub-bios-setup wants a
-#    real block device to probe geometry, so attach the raw image via a loop
-#    device (we are root in the VM). This step is deterministic: it copies the
-#    fixed core.img/boot.img produced in Phase A.
-loop=$(@util-linux@/bin/losetup -Pf --show "$raw")
+#    the i386-pc modules from the extracted tarball. grub-bios-setup operates on
+#    the plain raw file directly (--device-map=/dev/null makes it synthesize a
+#    device map, so no loop device is needed -- the runInLinuxVM sandbox has no
+#    loop device nodes). This step is deterministic: it copies the fixed
+#    core.img/boot.img produced in Phase A.
 @grub2@/bin/grub-bios-setup \
   --directory="$scratch/boot/grub/i386-pc" \
   --device-map=/dev/null \
-  "$loop"
-@util-linux@/bin/losetup -d "$loop"
+  "$raw"
 
 # 9. Convert the assembled raw image to the requested output format.
 mkdir -p "$out"
