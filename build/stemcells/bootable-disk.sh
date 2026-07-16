@@ -3,6 +3,17 @@
 # VM builder script via `replaceVars` (bootable-disk.nix), which already
 # supplies its own shebang/bash invocation.
 #
+# PHASE B of the deterministic disk-image refactor: assemble the final bootable
+# disk OFFLINE and DETERMINISTICALLY from the Phase A staging tarball
+# (@rootfsTree@/rootfs-staged.tar.gz) and staged ESP tree (@rootfsTree@/esp).
+# NO chroot, NO live mount of the target fs, NO wall-clock: filesystems are
+# populated from directories with `mkfs.ext4 -d` / `mcopy` under faketime, then
+# laid into a fixed-layout, fixed-MBR-id whole-disk raw image and converted.
+#
+# Runs as REAL root inside runInLinuxVM (required so the tarball extraction and
+# `mkfs.ext4 -d` preserve the non-root ownerships + setuid/setgid + xattrs;
+# fakeroot was proven to MASK security.capability xattrs, so it is NOT used).
+#
 # $out is the standard Nix build output path, provided by the enclosing
 # derivation's builder environment, not assigned in this fragment.
 # shellcheck disable=SC2154
@@ -10,132 +21,87 @@ set -exuo pipefail
 
 export SOURCE_DATE_EPOCH=0
 
-disk=/dev/vda
+# The VM root is a small tmpfs (memSize RAM), far too small to hold the several
+# GiB of working files (extracted tree + whole-disk raw + partition images), so
+# back the scratch work with the attached /dev/vda disk. mkVmImage sizes
+# /dev/vda LARGER than the target disk (see bootable-disk.nix) precisely so all
+# of these fit. Nothing about this scratch fs leaks into the deterministic
+# output: the target image is a plain file we build byte-by-byte below.
+@e2fsprogs@/bin/mkfs.ext4 -q -F /dev/vda
+work=/build/work
+mkdir -p "$work"
+@util-linux@/bin/mount -t ext4 /dev/vda "$work"
 
-# Partition the disk using sfdisk with MBR dos label
-# Partition 1 (ESP): starts at 2048 sectors, size ~48MiB (98304 sectors), type ef (EFI)
-# Partition 2 (root): starts at 100352 sectors, remainder, type 83 (Linux)
-@util-linux@/bin/sfdisk "$disk" <<EOF
+scratch="$work/rootfs"   # extracted Phase A root tree
+raw="$work/disk.raw"     # whole-disk target image (assembled in place)
+rootimg="$work/root.img" # ext4 root partition image
+espimg="$work/esp.img"   # vfat ESP partition image
+mkdir -p "$scratch"
+
+# Fixed partition geometry (identical to the current single-pass build).
+esp_start=2048
+esp_sectors=98304
+root_start=100352
+disk_sectors=$(( @sizeMib@ * 1024 * 1024 / 512 ))
+root_bytes=$(( (disk_sectors - root_start) * 512 ))
+
+# 2. Fixed-size whole-disk raw image.
+truncate -s $(( @sizeMib@ * 1024 * 1024 )) "$raw"
+
+# 3. MBR dos partition table with FIXED disk identifier (RC1). Same layout as
+#    today: ESP p1 (0xEF, bootable) then root p2 (0x83).
+@util-linux@/bin/sfdisk "$raw" <<EOF
 label: dos
+label-id: 0x44444444
 unit: sectors
 
-start=2048, size=98304, type=ef, bootable
-start=100352, type=83
+start=${esp_start}, size=${esp_sectors}, type=ef, bootable
+start=${root_start}, type=83
 EOF
 
-# Refresh partition table
-@util-linux@/bin/partx -u "$disk"
-sleep 1
+# 4. Extract the Phase A canonical tarball as root into the scratch dir. This
+#    preserves numeric ownerships, ACLs and xattrs (incl. security.capability).
+@gnutar@/bin/tar --numeric-owner --xattrs --acls \
+  -xzf @rootfsTree@/rootfs-staged.tar.gz -C "$scratch"
 
-# Create filesystems
-@dosfstools@/bin/mkfs.vfat -F32 -n ESP -i 44444444 "$disk"1
-@e2fsprogs@/bin/mkfs.ext4 "$disk"2 -L root -F \
-  -U 44444444-4444-4444-4444-444444444444 \
-  -E hash_seed=44444444-4444-4444-4444-444444444444,root_owner=0:0 \
-  -O ^dir_index -q
+# 5. Populate the root ext4 OFFLINE from the directory (RC2/RC3/RC6). Building
+#    from a directory with `mkfs.ext4 -d` gives a deterministic block layout
+#    (no live kernel allocator, no mount), and faketime pins the superblock
+#    timestamps. Flags match today's build (-L root, fixed -U, hash_seed,
+#    root_owner, ^dir_index).
+@libfaketime@/bin/faketime -f "1970-01-01 00:00:01" \
+  @e2fsprogs@/bin/mkfs.ext4 -q -F -L root \
+    -U 44444444-4444-4444-4444-444444444444 \
+    -E hash_seed=44444444-4444-4444-4444-444444444444,root_owner=0:0 \
+    -O ^dir_index \
+    -d "$scratch" "$rootimg" "$(( root_bytes / 1024 ))k"
 
-# Mount filesystems
-mkdir -p /mnt/root
-@util-linux@/bin/mount -t ext4 "$disk"2 /mnt/root
-mkdir -p /mnt/root/boot/efi
-@util-linux@/bin/mount -t vfat "$disk"1 /mnt/root/boot/efi
+# 6. Build the ESP vfat image OFFLINE (RC4). mkfs.vfat -i fixes the volume id;
+#    mcopy honors SOURCE_DATE_EPOCH for directory-entry timestamps.
+truncate -s $(( esp_sectors * 512 )) "$espimg"
+@dosfstools@/bin/mkfs.vfat -F32 -n ESP -i 44444444 "$espimg"
+( cd @rootfsTree@/esp && @mtools@/bin/mcopy -i "$espimg" -s -Q ./* :: )
 
-# Create /proc, /sys, /dev mount points (will be bind-mounted for grub-install)
-mkdir -p /mnt/root/{proc,sys,dev}
+# 7. Assemble the partition images into the whole disk at their sector offsets.
+dd if="$espimg" of="$raw" bs=512 seek=${esp_start} conv=notrunc
+dd if="$rootimg" of="$raw" bs=512 seek=${root_start} conv=notrunc
 
-# Extract osImage rootfs tarball into root partition
-@gnutar@/bin/tar -xf @osImage@/rootfs.tar.gz --acls --xattrs -C /mnt/root
+# 8. Embed BIOS grub (boot.img in the MBR + core.img in the post-MBR gap) using
+#    the i386-pc modules from the extracted tarball. grub-bios-setup wants a
+#    real block device to probe geometry, so attach the raw image via a loop
+#    device (we are root in the VM). This step is deterministic: it copies the
+#    fixed core.img/boot.img produced in Phase A.
+loop=$(@util-linux@/bin/losetup -Pf --show "$raw")
+@grub2@/bin/grub-bios-setup \
+  --directory="$scratch/boot/grub/i386-pc" \
+  --device-map=/dev/null \
+  "$loop"
+@util-linux@/bin/losetup -d "$loop"
 
-# Prepare chroot: bind /proc, /sys, /dev for grub-install and udev
-@util-linux@/bin/mount -t proc proc /mnt/root/proc
-@util-linux@/bin/mount -t sysfs sysfs /mnt/root/sys
-@util-linux@/bin/mount --bind /dev /mnt/root/dev
-
-# Start udev daemon so grub-install can detect devices
-@systemdMinimal@/lib/systemd/systemd-udevd &
-@systemdMinimal@/bin/udevadm trigger
-@systemdMinimal@/bin/udevadm settle
-
-# Create /etc/fstab
-cat >/mnt/root/etc/fstab <<FSTAB
-LABEL=root / ext4 defaults 0 1
-LABEL=ESP /boot/efi vfat defaults 0 2
-FSTAB
-
-# Chroot and install grub + configure bootloader
-chroot /mnt/root /bin/bash -exuo pipefail <<'CHROOT'
-export PATH=/usr/sbin:/usr/bin:/sbin:/bin
-
-# Generate a reproducible initramfs (deterministic cpio order + gzip -n).
-export SOURCE_DATE_EPOCH=0
-if [ ! -f /boot/initrd.img ]; then
-  update-initramfs -k all -c
-fi
-# Rebuild each initrd deterministically in case initramfs-tools ignored
-# SOURCE_DATE_EPOCH: re-pack the cpio with sorted names and gzip -n.
-for img in /boot/initrd.img-*; do
-  [ -e "$img" ] || continue
-  tmpd=$(mktemp -d)
-  # Detect if the initramfs is gzip compressed or plain cpio.
-  if head -c 2 "$img" | od -An -tx1 | grep -q '1f 8b'; then
-    # File is gzip compressed, use zcat
-    ( cd "$tmpd" && zcat "$img" | cpio -idm --quiet ) || true
-  else
-    # File is uncompressed cpio or other format, try direct cpio extraction
-    ( cd "$tmpd" && cpio -idm --quiet < "$img" ) || true
-  fi
-  ( cd "$tmpd" && find . -mindepth 1 -printf '%P\0' | LC_ALL=C sort -z \
-      | cpio -o -H newc --quiet -0 --owner=0:0 \
-      | gzip -n -9 > "$img" )
-  rm -rf "$tmpd"
-done
-
-# Set grub defaults with BOSH-compatible kernel cmdline
-cat > /etc/default/grub <<EOF
-GRUB_TIMEOUT=5
-GRUB_CMDLINE_LINUX="vconsole.keymap=us net.ifnames=0 biosdevname=0 crashkernel=auto selinux=0 plymouth.enable=0 console=ttyS0,115200n8 earlyprintk=ttyS0 rootdelay=300 audit=1 cgroup_enable=memory swapaccount=1 apparmor=1 security=apparmor"
-GRUB_CMDLINE_LINUX_DEFAULT=""
-EOF
-
-# Create /boot/grub directory if it doesn't exist
-mkdir -p /boot/grub
-
-# Install grub for EFI (x86_64-efi target)
-grub-install --target x86_64-efi --efi-directory /boot/efi --boot-directory /boot --removable --no-floppy /dev/vda
-
-# Install grub for BIOS (i386-pc target) into MBR
-grub-install --target i386-pc --boot-directory /boot --no-floppy /dev/vda
-
-# Ensure grub-mkconfig generates root=UUID=... (not root=/dev/vda2).
-# grub's 10_linux script uses UUID form only when /dev/disk/by-uuid/<uuid>
-# exists at grub-mkconfig time.  In the Nix runInLinuxVM build environment
-# udev does not reliably create those symlinks, so create them manually.
-# Without this, Incus VMs (which present disks as /dev/sda via virtio-scsi)
-# fail to boot with "ALERT! /dev/vda2 does not exist".
-ROOT_UUID=$(blkid -s UUID -o value /dev/vda2)
-mkdir -p /dev/disk/by-uuid
-ln -sf /dev/vda2 "/dev/disk/by-uuid/$ROOT_UUID"
-
-# Generate grub.cfg from /etc/default/grub
-update-grub
-
-# Strip any embedded build time from generated grub artifacts.
-find /boot/grub -name '*.mod' -o -name 'grub.cfg' | while read -r f; do
-  touch -d "@$SOURCE_DATE_EPOCH" "$f"
-done
-
-CHROOT
-
-# Unmount everything in reverse order
-@util-linux@/bin/umount /mnt/root/dev 2>/dev/null || true
-@util-linux@/bin/umount /mnt/root/sys 2>/dev/null || true
-@util-linux@/bin/umount /mnt/root/proc 2>/dev/null || true
-@util-linux@/bin/umount /mnt/root/boot/efi 2>/dev/null || true
-@util-linux@/bin/umount /mnt/root 2>/dev/null || true
-
-# Convert raw disk image to the requested output format
+# 9. Convert the assembled raw image to the requested output format.
 mkdir -p "$out"
-@qemu@/bin/qemu-img convert -f raw -O @diskFormat@ /dev/vda "$out/@diskOutput@"
-
-# Verify output image
+@qemu@/bin/qemu-img convert -f raw -O @diskFormat@ "$raw" "$out/@diskOutput@"
 @qemu@/bin/qemu-img info "$out/@diskOutput@"
+
+# Release the scratch fs so it does not linger mounted at VM shutdown.
+@util-linux@/bin/umount "$work" 2>/dev/null || true
