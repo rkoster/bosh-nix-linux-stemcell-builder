@@ -10,8 +10,6 @@
 # setuid/setgid + security.capability xattrs; faketime pins fs timestamps.
 # Output: $out/root.<format> (root.qcow2 by default, root.img for raw)
 {
-  vmTools,
-  stdenv,
   util-linux,
   dosfstools,
   e2fsprogs,

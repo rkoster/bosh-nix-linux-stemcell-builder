@@ -68,7 +68,9 @@ EOF
 #    from a directory with `mkfs.ext4 -d` gives a deterministic block layout
 #    (no live kernel allocator, no mount), and faketime pins the superblock
 #    timestamps. Flags match today's build (-L root, fixed -U, hash_seed,
-#    root_owner, ^dir_index).
+#    root_owner, ^dir_index). faketime is pinned to epoch 1 (not 0) because
+#    mke2fs treats a zero timestamp as "unset" and falls back to wall-clock;
+#    epoch 1 is the smallest value it accepts as a fixed time.
 @libfaketime@/bin/faketime -f "1970-01-01 00:00:01" \
   @e2fsprogs@/bin/mkfs.ext4 -q -F -L root \
     -U 44444444-4444-4444-4444-444444444444 \
@@ -91,7 +93,9 @@ dd if="$rootimg" of="$raw" bs=512 seek=${root_start} conv=notrunc
 #    the plain raw file directly (--device-map=/dev/null makes it synthesize a
 #    device map, so no loop device is needed -- the runInLinuxVM sandbox has no
 #    loop device nodes). This step is deterministic: it copies the fixed
-#    core.img/boot.img produced in Phase A.
+#    core.img/boot.img produced in Phase A. NOTE: the BIOS boot chain depends on
+#    Phase A's core.img being prefixed to load /boot/grub from (hd0,msdos2); if
+#    Phase A changes that prefix or the partition index, BIOS boot breaks here.
 @grub2@/bin/grub-bios-setup \
   --directory="$scratch/boot/grub/i386-pc" \
   --device-map=/dev/null \
