@@ -674,13 +674,20 @@ checks = {
 
 - [ ] **Step 2: Prove the guard exercises a real rebuild**
 
+> **CORRECTION (found during execution):** `nix build <check> --rebuild` does
+> NOT force the underlying disk to rebuild — Nix's `--rebuild` only re-runs the
+> requested top-level derivation (the cheap sha256sum), reusing the cached disk.
+> The genuine same-machine determinism gate is `--rebuild` on the DISK packages
+> directly (below). The sha-emitting check is retained as a stable fingerprint
+> for cross-build comparison. See build/checks/disk-determinism.nix.
+
 Run:
 ```bash
-nix build .#checks.x86_64-linux.disk-determinism-openstack
-nix build .#checks.x86_64-linux.disk-determinism-openstack --rebuild
-nix build .#checks.x86_64-linux.disk-determinism-aws --rebuild
+nix build .#noble-stemcell-disk --rebuild      # OpenStack qcow2
+nix build .#noble-stemcell-aws-disk --rebuild  # AWS raw
 ```
-Expected: all EXIT 0. A regression (non-deterministic disk) makes the underlying disk `--rebuild` fail, failing the check.
+Expected: both EXIT 0 with no "output differs". A regression (non-deterministic
+disk) makes the disk `--rebuild` fail.
 
 - [ ] **Step 3: `nix fmt` then commit**
 

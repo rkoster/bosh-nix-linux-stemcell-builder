@@ -34,8 +34,11 @@
               programs.shellcheck.enable = true;
             };
 
-            # Determinism guards: `nix build .#checks.<system>.disk-determinism-*
-            # --rebuild` forces a real disk rebuild and fails on any byte drift.
+            # Determinism guards: emit the assembled disk sha256 as a stable
+            # fingerprint. The genuine same-machine byte-determinism gate is
+            # `nix build .#noble-stemcell-disk --rebuild` (+ -aws-disk); see
+            # build/checks/disk-determinism.nix for why --rebuild on the check
+            # itself is insufficient.
             checks = {
               disk-determinism-openstack = pkgs.callPackage ./build/checks/disk-determinism.nix {
                 disk = noble-stemcell-disk;
