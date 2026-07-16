@@ -179,6 +179,9 @@ find "$stage" -exec touch --no-dereference -d "@0" {} +
 
 # Emit the deterministic interface: canonical rootfs tarball. ($out/esp was
 # already populated above; Nix normalizes its file metadata on store import.)
+# --xattrs forces PAX format, whose per-entry extended headers otherwise record
+# the volatile atime/ctime -- strip them so the tarball is byte-reproducible.
 ( cd "$stage" && @gnutar@/bin/tar --numeric-owner --xattrs --acls \
+    --pax-option='delete=atime,delete=ctime' \
     --sort=name --mtime="@$SOURCE_DATE_EPOCH" \
     -czf "$out/rootfs-staged.tar.gz" . )
