@@ -7,6 +7,7 @@
   buildCommand,
   nativeBuildInputs ? [ ],
   memSize ? 512,
+  postVM ? "",
 }:
 vmTools.runInLinuxVM (
   stdenv.mkDerivation {
@@ -15,6 +16,7 @@ vmTools.runInLinuxVM (
       buildCommand
       nativeBuildInputs
       memSize
+      postVM
       ;
     preVM = vmTools.createEmptyImage {
       inherit size;
