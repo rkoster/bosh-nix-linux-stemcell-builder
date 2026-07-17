@@ -39,14 +39,18 @@ espimg="$work/esp.img"   # vfat ESP partition image
 mkdir -p "$scratch"
 
 # Fixed partition geometry (identical to the current single-pass build).
+# size_mib is substituted by replaceVars (a plain integer); assigning it to a
+# shell variable first keeps the arithmetic below valid shell for shellcheck.
+size_mib=@sizeMib@
 esp_start=2048
 esp_sectors=98304
 root_start=100352
-disk_sectors=$(( @sizeMib@ * 1024 * 1024 / 512 ))
-root_bytes=$(( (disk_sectors - root_start) * 512 ))
+disk_bytes=$((size_mib * 1024 * 1024))
+disk_sectors=$((disk_bytes / 512))
+root_bytes=$(((disk_sectors - root_start) * 512))
 
 # 2. Fixed-size whole-disk raw image.
-truncate -s $(( @sizeMib@ * 1024 * 1024 )) "$raw"
+truncate -s "$disk_bytes" "$raw"
 
 # 3. MBR dos partition table with FIXED disk identifier (RC1). Same layout as
 #    today: ESP p1 (0xEF, bootable) then root p2 (0x83).
@@ -73,16 +77,16 @@ EOF
 #    epoch 1 is the smallest value it accepts as a fixed time.
 @libfaketime@/bin/faketime -f "1970-01-01 00:00:01" \
   @e2fsprogs@/bin/mkfs.ext4 -q -F -L root \
-    -U 44444444-4444-4444-4444-444444444444 \
-    -E hash_seed=44444444-4444-4444-4444-444444444444,root_owner=0:0 \
-    -O ^dir_index \
-    -d "$scratch" "$rootimg" "$(( root_bytes / 1024 ))k"
+  -U 44444444-4444-4444-4444-444444444444 \
+  -E hash_seed=44444444-4444-4444-4444-444444444444,root_owner=0:0 \
+  -O ^dir_index \
+  -d "$scratch" "$rootimg" "$((root_bytes / 1024))k"
 
 # 6. Build the ESP vfat image OFFLINE (RC4). mkfs.vfat -i fixes the volume id;
 #    mcopy honors SOURCE_DATE_EPOCH for directory-entry timestamps.
-truncate -s $(( esp_sectors * 512 )) "$espimg"
+truncate -s $((esp_sectors * 512)) "$espimg"
 @dosfstools@/bin/mkfs.vfat -F32 -n ESP -i 44444444 "$espimg"
-( cd @rootfsTree@/esp && @mtools@/bin/mcopy -i "$espimg" -s -Q ./* :: )
+(cd @rootfsTree@/esp && @mtools@/bin/mcopy -i "$espimg" -s -Q ./* ::)
 
 # 7. Assemble the partition images into the whole disk at their sector offsets.
 dd if="$espimg" of="$raw" bs=512 seek=${esp_start} conv=notrunc
