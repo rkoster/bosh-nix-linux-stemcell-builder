@@ -10,11 +10,12 @@ set -eu
 # behaviour as the original `cat >` heredocs), so only shadow needs an explicit
 # mode change.
 
-# /etc/group, /etc/gshadow, /etc/passwd, /etc/shadow — exact bytes.
-cp "$STAGE_DIR"/group "$root/etc/group"
-cp "$STAGE_DIR"/gshadow "$root/etc/gshadow"
-cp "$STAGE_DIR"/passwd "$root/etc/passwd"
-cp "$STAGE_DIR"/shadow "$root/etc/shadow"
+# /etc/group, /etc/gshadow, /etc/passwd, /etc/shadow — exact bytes, per-release.
+# shellcheck disable=SC2154
+cp "$ACCOUNTS_DIR"/group "$root/etc/group"
+cp "$ACCOUNTS_DIR"/gshadow "$root/etc/gshadow"
+cp "$ACCOUNTS_DIR"/passwd "$root/etc/passwd"
+cp "$ACCOUNTS_DIR"/shadow "$root/etc/shadow"
 chmod 000 "$root/etc/shadow"
 
 mkdir -p "$root/home/vcap"

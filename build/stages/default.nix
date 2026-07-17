@@ -27,7 +27,7 @@ let
 in
 [
   # Pure stages: import individual stage directories (each resolves to its own default.nix)
-  (import ./users { })
+  (import ./users { inherit release; })
   (import ./ssh { })
   (import ./sysctl-limits-env { })
   (import ./sudoers-pam { })
