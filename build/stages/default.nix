@@ -1,8 +1,10 @@
 {
   callPackage,
   infrastructure ? "openstack",
+  release ? "noble",
 }:
 let
+  releaseDesc = import ../ubuntu/release.nix { inherit release; };
   # Source-built components that need store-path interpolation
   bosh-agent = callPackage ../pkgs/bosh-agent.nix { };
   monit = callPackage ../pkgs/monit.nix { };
@@ -31,7 +33,7 @@ in
   (import ./sudoers-pam { })
   (import ./rsyslog { })
   (import ./audit { })
-  (import ./misc-os { })
+  (import ./misc-os { codename = releaseDesc.codename; })
   (import ./systemd-services { })
 
   # Interpolated stages (embed store paths)

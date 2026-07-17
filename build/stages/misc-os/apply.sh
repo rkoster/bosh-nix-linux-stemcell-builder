@@ -37,11 +37,14 @@ chmod 644 "$root/etc/machine-id" || true
 echo "" >"$root/etc/machine-id"
 rm -f "$root/var/lib/dbus/machine-id" || true
 
-# base_apt: create /etc/apt/sources.list with the Ubuntu noble deb lines.
-# Ubuntu 24.04 ships apt sources in /etc/apt/sources.list.d/ubuntu.sources
-# (DEB822 format) but the os_image spec asserts the legacy /etc/apt/sources.list
-# contains the three required deb entries.
-cp "$STAGE_DIR"/sources.list "$root/etc/apt/sources.list"
+# base_apt: create /etc/apt/sources.list with the Ubuntu deb lines for the
+# active release codename. Byte-identical to the previous static asset for noble.
+# shellcheck disable=SC2154
+cat >"$root/etc/apt/sources.list" <<EOF
+deb http://archive.ubuntu.com/ubuntu ${CODENAME} main universe multiverse
+deb http://archive.ubuntu.com/ubuntu ${CODENAME}-updates main universe multiverse
+deb http://security.ubuntu.com/ubuntu ${CODENAME}-security main universe multiverse
+EOF
 chmod 0644 "$root/etc/apt/sources.list"
 chown root:root "$root/etc/apt/sources.list" 2>/dev/null || true
 

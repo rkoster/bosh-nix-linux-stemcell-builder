@@ -1,3 +1,0 @@
-deb http://archive.ubuntu.com/ubuntu noble main universe multiverse
-deb http://archive.ubuntu.com/ubuntu noble-updates main universe multiverse
-deb http://security.ubuntu.com/ubuntu noble-security main universe multiverse

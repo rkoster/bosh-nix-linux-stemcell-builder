@@ -30,7 +30,11 @@
   syft,
   jq,
 }:
-{ base, stages }:
+{
+  base,
+  stages,
+  osVersion ? "noble",
+}:
 let
   devToolsPackages = import ./dev-tools-packages.nix;
   devToolsBashArray = builtins.concatStringsSep " " (map (p: "\"${p}\"") devToolsPackages);
@@ -161,9 +165,9 @@ stdenv.mkDerivation {
       | (reduce .packages[] as $p ({};
            (($p.externalRefs // []) | map(select(.referenceType == "purl")) | .[0].referenceLocator) as $purl
            | if $purl then .[$p.SPDXID] = $purlCanon[$purl] else . end)) as $idCanon
-      | .documentNamespace = "https://bosh.io/stemcell/ubuntu-noble"
+      | .documentNamespace = "https://bosh.io/stemcell/ubuntu-${osVersion}"
       | .creationInfo.created = "1970-01-01T00:00:00Z"
-      | .name = "bosh-stemcell-ubuntu-noble"
+      | .name = "bosh-stemcell-ubuntu-${osVersion}"
       | .relationships |= (map(
           .spdxElementId = ($idCanon[.spdxElementId] // .spdxElementId)
           | .relatedSpdxElement = ($idCanon[.relatedSpdxElement] // .relatedSpdxElement)

@@ -8,10 +8,12 @@
   release ? "noble",
 }:
 let
+  desc = import ../ubuntu/release.nix { inherit release; };
   applyStages = callPackage ./apply-stages.nix { };
   base = callPackage ./rootfs.nix { inherit release; };
-  # TODO(Task 7): pass `release` to ../stages once stages/default.nix accepts it.
-  stages = callPackage ../stages { inherit infrastructure; };
+  stages = callPackage ../stages { inherit infrastructure release; };
 in
-# TODO(Task 7): thread osVersion (from ../ubuntu/release.nix) once apply-stages.nix accepts it.
-applyStages { inherit base stages; }
+applyStages {
+  inherit base stages;
+  osVersion = desc.osVersion;
+}
