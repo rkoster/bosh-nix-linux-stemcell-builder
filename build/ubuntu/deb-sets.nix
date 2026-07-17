@@ -1,11 +1,18 @@
 # Ubuntu Noble deb selection. Pure-data package lists (base/boot/bosh) plus the
 # assembled top-level `image` set. Folds base-packages.nix, boot-packages.nix,
 # noble-packages.nix, and image-packages.nix.
-{ lib, callPackage }:
+{
+  lib,
+  callPackage,
+  release ? "noble",
+}:
 
 let
   aptPins = callPackage ./apt-pins.nix { };
   essential = callPackage ./essential.nix { inherit aptPins; };
+
+  desc = import ./release.nix { inherit release; };
+  bosh = desc.boshPackages;
 
   # Generic Debian/Ubuntu build base (was base-packages.nix; transcribed from
   # nixpkgs commonDebPackages + debDistros.ubuntu2204x86_64's two extras).
@@ -63,82 +70,6 @@ let
     "apt"
     "ncurses-base"
     "dbus"
-  ];
-
-  # Authoritative BOSH package set for ubuntu-noble (was noble-packages.nix).
-  bosh = [
-    "libssl-dev"
-    "lsof"
-    "strace"
-    "bind9-host"
-    "dnsutils"
-    "tcpdump"
-    "iputils-arping"
-    "curl"
-    "wget"
-    "bison"
-    "libreadline6-dev"
-    "rng-tools"
-    "libxml2"
-    "libxml2-dev"
-    "libxslt1.1"
-    "libxslt1-dev"
-    "zip"
-    "unzip"
-    "flex"
-    "psmisc"
-    "apparmor-utils"
-    "iptables"
-    "nftables"
-    "sysstat"
-    "rsync"
-    "openssh-server"
-    "traceroute"
-    "libncurses5-dev"
-    "quota"
-    "libaio1t64"
-    "gdb"
-    "libcap2-bin"
-    "libcap2-dev"
-    "libbz2-dev"
-    "cmake"
-    "uuid-dev"
-    "libgcrypt-dev"
-    "ca-certificates"
-    "mg"
-    "htop"
-    "module-assistant"
-    "debhelper"
-    "runit"
-    "parted"
-    "cloud-guest-utils"
-    "anacron"
-    "software-properties-common"
-    "xfsprogs"
-    "gdisk"
-    "chrony"
-    "dbus"
-    "nvme-cli"
-    "fdisk"
-    "ethtool"
-    "libpam-pwquality"
-    "gpg-agent"
-    "libcurl4"
-    "libcurl4-openssl-dev"
-    "resolvconf"
-    "net-tools"
-    "ifupdown"
-    "rsyslog"
-    "rsyslog-gnutls"
-    "rsyslog-openssl"
-    "rsyslog-relp"
-    "auditd"
-    "sudo"
-    "cron"
-    "systemd-timesyncd"
-    "grub2"
-    "zlib1g-dev"
-    "build-essential"
   ];
 in
 {
