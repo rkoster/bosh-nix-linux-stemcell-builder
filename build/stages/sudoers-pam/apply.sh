@@ -48,8 +48,8 @@ if [ "$PAM_LASTLOG2" = "package" ]; then
   # libpam-lastlog2 installs pam_lastlog2.so only under the multiarch securedir
   # (/usr/lib/x86_64-linux-gnu/security). PAM also searches /usr/lib/security;
   # bridge the two so the module loads.
-  if [ -f "$root/usr/lib/x86_64-linux-gnu/security/pam_lastlog2.so" ] && \
-     [ ! -e "$root/usr/lib/security/pam_lastlog2.so" ]; then
+  if [ -f "$root/usr/lib/x86_64-linux-gnu/security/pam_lastlog2.so" ] &&
+    [ ! -e "$root/usr/lib/security/pam_lastlog2.so" ]; then
     mkdir -p "$root/usr/lib/security"
     ln -sf /usr/lib/x86_64-linux-gnu/security/pam_lastlog2.so "$root/usr/lib/security/pam_lastlog2.so"
   fi
