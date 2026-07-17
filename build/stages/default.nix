@@ -30,7 +30,7 @@ in
   (import ./users { inherit release; })
   (import ./ssh { })
   (import ./sysctl-limits-env { })
-  (import ./sudoers-pam { })
+  (import ./sudoers-pam { pamLastlog2 = releaseDesc.features.pamLastlog2; })
   (import ./rsyslog { })
   (import ./audit { })
   (import ./misc-os { codename = releaseDesc.codename; })

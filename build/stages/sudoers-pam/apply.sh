@@ -39,8 +39,24 @@ sed -i '/\[success=1 default=ignore\].*pam_unix/a auth\t[default=die]\t\t\tpam_f
 # common-password: Update pam_pwquality and pam_unix settings
 sed -i 's/pam_pwquality.so retry=3$/pam_pwquality.so retry=3 minlen=14 dcredit=-1 ucredit=-1 ocredit=-1 lcredit=-1 difok=8/' "$root/etc/pam.d/common-password"
 sed -i 's/pam_unix.so obscure use_authtok try_first_pass yescrypt/pam_unix.so obscure use_authtok try_first_pass sha512 remember=24 minlen=14 rounds=5000/' "$root/etc/pam.d/common-password"
-# Add pam_lastlog2.so comment line
-sed -i '/# end of pam-auth-update config/i #session\toptional\t\t\tpam_lastlog2.so showfailed #NOBLE_TODO: this will only work if util-linux =>2.40 which provide pam_lastlog2.so or if users will install it manually' "$root/etc/pam.d/common-password"
+# Add pam_lastlog2.so line. Mode is selected by PAM_LASTLOG2 (injected by
+# sudoers-pam/default.nix from the release descriptor's features.pamLastlog2).
+# shellcheck disable=SC2154
+if [ "$PAM_LASTLOG2" = "package" ]; then
+  # Resolute: libpam-lastlog2 is installed -> emit an ACTIVE line.
+  sed -i '/# end of pam-auth-update config/i session\toptional\t\t\tpam_lastlog2.so showfailed' "$root/etc/pam.d/common-password"
+  # libpam-lastlog2 installs pam_lastlog2.so only under the multiarch securedir
+  # (/usr/lib/x86_64-linux-gnu/security). PAM also searches /usr/lib/security;
+  # bridge the two so the module loads.
+  if [ -f "$root/usr/lib/x86_64-linux-gnu/security/pam_lastlog2.so" ] && \
+     [ ! -e "$root/usr/lib/security/pam_lastlog2.so" ]; then
+    mkdir -p "$root/usr/lib/security"
+    ln -sf /usr/lib/x86_64-linux-gnu/security/pam_lastlog2.so "$root/usr/lib/security/pam_lastlog2.so"
+  fi
+else
+  # Noble: util-linux < 2.40 lacks pam_lastlog2.so -> emit a commented placeholder.
+  sed -i '/# end of pam-auth-update config/i #session\toptional\t\t\tpam_lastlog2.so showfailed #NOBLE_TODO: this will only work if util-linux =>2.40 which provide pam_lastlog2.so or if users will install it manually' "$root/etc/pam.d/common-password"
+fi
 
 # login: Change pam_faildelay delay from 3000000 to 4000000
 sed -i 's/delay=3000000/delay=4000000/' "$root/etc/pam.d/login"
