@@ -1,46 +1,62 @@
-Resolute OpenStack disk — QEMU boot validation (Task 12)
-========================================================
+Resolute + Noble disk — QEMU boot validation (Task 12)
+======================================================
 
-2026-07-17  RESULT: FAIL (kernel panic — root fs cannot be mounted)
-
-Disk under test:
-  nix build .#packages.x86_64-linux.resolute-stemcell-disk -> /tmp/res-disk/root.qcow2
-  sha256: 049054bf32f565158a5fa3a6cd07f52ab2fe85325e2f9ba1a3209943f7f6e0b3
-  size:   2052718592 bytes (virtio [vda] 2.68 GB / 2.50 GiB, partitions vda1 vda2)
+2026-07-17  RESULT: PASS (both releases boot to login) — after initramfs repack fix.
 
 Firmware:
-  OVMF_FD=/nix/store/wzbj3qz77bpvy7wpxf4sbvrlavny919a-OVMF-202602-fd/FV/OVMF.fd (exists, 4194304 bytes)
+  OVMF_FD=/nix/store/wzbj3qz77bpvy7wpxf4sbvrlavny919a-OVMF-202602-fd/FV/OVMF.fd (4194304 bytes)
 
-qemu flags used (mirrors the Noble Phase-4 / poc boot-qemu.sh procedure — KVM present at /dev/kvm):
-  qemu-system-x86_64 -enable-kvm -m 2048 -smp 2 -machine q35 -nographic \
+qemu flags (KVM present at /dev/kvm):
+  qemu-system-x86_64 -enable-kvm -m 2048 -smp 2 -machine q35 -nographic -no-reboot \
     -drive if=pflash,format=raw,readonly=on,file="$OVMF_FD" \
-    -drive file=/tmp/res-boot.qcow2,format=qcow2,if=virtio \
-    -serial mon:stdio
-  Deviation from the task's literal command: added "-enable-kvm -machine q35" to match the
-  Noble reference (docs/plans/2026-07-06-nix-stemcell-poc-m0-m1.md Task 1.7: "-enable-kvm ...
-  -machine q35"). This did not affect the outcome. First run used timeout 180; because the
-  kernel cmdline carries rootdelay=300 the run was repeated with timeout 360 to let the full
-  root-wait window elapse and reach the definitive panic.
+    -drive file=<copy>.qcow2,format=qcow2,if=virtio \
+    -serial mon:stdio </dev/null
 
-PROGRESS: UEFI (OVMF) -> GRUB -> kernel 7.0.0-14-generic boots and initialises fully.
-The virtio root disk IS detected. It then FAILS mounting root.
+PASS evidence — Noble (nix build .#noble-stemcell-disk):
+  [    4.394124] Freeing initrd memory: 54500K        <- FULL initrd (was 240K/56K when broken)
+  [    4.719515] Run /init as init process
+  Begin: Loading essential drivers ... done.
+  systemd 255.4-1ubuntu8 running in system mode ...
+  [  OK  ] Finished firstboot.service - Run first boot tasks.
+  localhost login:
+  No "Waiting 300 sec", no "Cannot open root", no "Kernel panic".
 
-FAIL evidence (exact matched log lines):
+PASS evidence — Resolute (nix build .#resolute-stemcell-disk):
+  [    4.916565] Freeing initrd memory: 74488K        <- FULL initrd (was 240K when broken)
+  [    5.122868] Run /init as init process
+  Begin: Loading essential drivers ... done.
+  systemd 259.5-0ubuntu3 running in system mode ...
+  [  OK  ] Finished firstboot.service - Run first boot tasks.
+  localhost login:
+  No "Waiting 300 sec", no "Cannot open root", no "Kernel panic".
+
+Determinism: `nix flake check` = "all checks passed!" — all rootfs/disk determinism
+checks (Noble + Resolute, openstack + aws) build twice and compare byte-for-byte.
+
+--------------------------------------------------------------------------------
+Prior FAIL (2026-07-17, before fix) — retained for history
+--------------------------------------------------------------------------------
+Earlier both disks FAILED to boot with a root-mount kernel panic:
   [    3.962220] Waiting 300 sec before mounting root device...
-  [  334.081849] VFS: Cannot open root device "UUID=44444444-4444-4444-4444-444444444444" or unknown-block(0,0): error -6
-  [  334.087005] fd00         2621440 vda
-  [  334.089003]   fd01           49152 vda1 44444444-01
-  [  334.090827]   fd02         2571264 vda2 44444444-02
+  [  334.081849] VFS: Cannot open root device "UUID=4444...4444" or unknown-block(0,0): error -6
   [  334.098270] Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0)
-  [  334.157929] ---[ end Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0) ]---
+Symptom: "Freeing initrd memory: 240K" — a tiny, microcode-only initrd with no /init.
 
-Root cause (for the human investigator — NOT fixed here, per task constraints):
-  Kernel cmdline: root=UUID=44444444-4444-4444-4444-444444444444 (a filesystem UUID).
-  The initrd is tiny ("Freeing initrd memory: 240K") and lacks udev/blkid, so it cannot
-  resolve a filesystem UUID to a block device. The kernel's built-in root mounter only sees
-  the PARTITION GUIDs (vda1 44444444-01, vda2 44444444-02), never a matching FS UUID, so it
-  panics. Likely needs either a proper initramfs that resolves UUID=, or a root= that matches
-  what is actually present (e.g. PARTUUID / /dev/vda2 / a filesystem labelled with that UUID).
+Root cause (CONFIRMED and FIXED): the initramfs repack loop in
+build/stemcells/bootable-rootfs.sh extracted each initrd with `cpio -idm < img`,
+which reads only the FIRST cpio segment (CPU microcode) and stops at its TRAILER,
+silently discarding the remaining uncompressed early segments AND the entire
+compressed main initramfs (with /init and the modules that mount root). The
+resulting microcode-only initrd left the kernel's built-in mounter unable to
+resolve root=UUID=... -> panic. This affected BOTH Noble and Resolute; it was
+never caught because the production path was only determinism-tested, never
+boot-tested.
 
-Environment: not an env/tooling issue — nix build, OVMF, qemu, and KVM all worked. The disk
-image itself does not boot to userspace.
+Fix: the repack now splits each initrd at the early/main boundary (same header
+walk as unmkinitramfs(8)), preserves the uncompressed early (microcode) segments
+byte-for-byte, and re-packs ONLY the decompressed main initramfs deterministically
+(sorted names, mtime @0, owner 0:0, newc, gzip -n), then concatenates them back.
+Verified: reassembled initrd is path-list- and content-identical to the original
+(only cpio framing metadata normalized), full-size, and boots to login on both
+releases. All Noble baseline hashes were re-anchored against the corrected,
+actually-booting image (docs/plans/baseline-hashes.txt).

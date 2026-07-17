@@ -84,24 +84,89 @@ if [ ! -f /boot/initrd.img ]; then
   update-initramfs -k all -c
 fi
 # Rebuild each initrd deterministically in case initramfs-tools ignored
-# SOURCE_DATE_EPOCH: re-pack the cpio with sorted names, pin every extracted
-# entry's mtime to @0 (fixes initramfs mtime non-determinism, RC5), and gzip -n.
+# SOURCE_DATE_EPOCH: re-pack the main initramfs cpio with sorted names, pin
+# every extracted entry's mtime to @0 (fixes initramfs mtime non-determinism,
+# RC5), and gzip -n.
+#
+# CRITICAL: Ubuntu initrds are MULTI-SEGMENT. One or more *uncompressed* early
+# cpio archives (CPU microcode / firmware, magic 070701) are concatenated in
+# front of the *compressed* main initramfs (the part that actually contains
+# /init and the modules needed to mount root). A naive `cpio -idm < img` reads
+# only the FIRST cpio segment (the microcode) and silently stops at its
+# TRAILER, discarding every later segment -- including the entire main
+# initramfs. The resulting initrd is microcode-only, has no /init, and the
+# kernel falls through to its built-in mounter which cannot resolve
+# root=UUID=... -> "Waiting <rootdelay> sec" -> panic. This broke boot for
+# every image.
+#
+# Fix: locate the early/main boundary with the same header-walk logic as
+# unmkinitramfs(8), keep the early (microcode) bytes VERBATIM -- they are
+# already deterministic and re-encoding them risks the microcode loader -- and
+# re-pack ONLY the decompressed main initramfs deterministically, then
+# concatenate early + normalized-main back together.
+
+# Read an ASCII-hex header field (newc fields are stored as hex text). Returns
+# non-zero (no match) when the bytes are not valid hex, e.g. compressed data.
+readhex() { dd < "$1" bs=1 skip="$2" count="$3" 2>/dev/null | LANG=C grep -E "^[0-9A-Fa-f]{$3}\$"; }
+# True when the byte at the given offset is a zero (cpio archive padding/EOF).
+checkzero() { dd < "$1" bs=1 skip="$2" count=1 2>/dev/null | LANG=C grep -q -z '^$'; }
+# Byte offset where the compressed main initramfs begins (== total size of all
+# leading uncompressed early cpio archives). 0 when there is no early segment.
+main_offset() {
+  local img=$1 start=0 end magic namesize filesize
+  while :; do
+    end=$start
+    while :; do
+      if checkzero "$img" "$end"; then
+        end=$((end + 4))
+        while checkzero "$img" "$end"; do end=$((end + 4)); done
+        break
+      fi
+      magic=$(readhex "$img" "$end" 6) || break
+      { [ "$magic" = 070701 ] || [ "$magic" = 070702 ]; } || break
+      namesize=0x$(readhex "$img" $((end + 94)) 8)
+      filesize=0x$(readhex "$img" $((end + 54)) 8)
+      end=$((end + 110))
+      end=$(((end + namesize + 3) & ~3))
+      end=$(((end + filesize + 3) & ~3))
+    done
+    [ "$end" -eq "$start" ] && break
+    start=$end
+  done
+  printf '%s\n' "$start"
+}
+
 for img in /boot/initrd.img-*; do
   [ -e "$img" ] || continue
+  off=$(main_offset "$img")
   tmpd=$(mktemp -d)
-  # Detect if the initramfs is gzip compressed or plain cpio.
-  if head -c 2 "$img" | od -An -tx1 | grep -q '1f 8b'; then
-    # File is gzip compressed, use zcat
-    ( cd "$tmpd" && zcat "$img" | cpio -idm --quiet ) || true
+  root="$tmpd/root"
+  mkdir -p "$root"
+  if [ "$off" -gt 0 ]; then
+    # Preserve the uncompressed early (microcode) segment(s) byte-for-byte.
+    dd if="$img" of="$tmpd/early.bin" bs=1M iflag=count_bytes count="$off" 2>/dev/null
+    dd if="$img" of="$tmpd/main.z"   bs=1M iflag=skip_bytes  skip="$off" 2>/dev/null
   else
-    # File is uncompressed cpio or other format, try direct cpio extraction
-    ( cd "$tmpd" && cpio -idm --quiet < "$img" ) || true
+    : > "$tmpd/early.bin"
+    cp "$img" "$tmpd/main.z"
   fi
-  # Pin mtimes of all extracted entries before repacking.
-  find "$tmpd" -mindepth 1 -exec touch --no-dereference -d "@0" {} +
-  ( cd "$tmpd" && find . -mindepth 1 -printf '%P\0' | LC_ALL=C sort -z \
+  # Decompress the main initramfs by magic (Ubuntu default is gzip). A bare
+  # cpio (magic 070701) main is passed through uncompressed.
+  magic=$(head -c 4 "$tmpd/main.z" | od -An -tx1 | tr -d ' \n')
+  case "$magic" in
+    1f8b*)     gzip -d -c "$tmpd/main.z" ;;
+    28b52ffd)  zstd -q -d -c "$tmpd/main.z" ;;
+    fd377a58*) xz -d -c "$tmpd/main.z" ;;
+    30373037*) cat "$tmpd/main.z" ;;
+    *) echo "FATAL: unknown main initramfs compression magic '$magic' in $img" >&2; exit 1 ;;
+  esac | ( cd "$root" && cpio -idm --quiet )
+  # Pin mtimes of all extracted entries before repacking the main.
+  find "$root" -mindepth 1 -exec touch --no-dereference -d "@0" {} +
+  ( cd "$root" && find . -mindepth 1 -printf '%P\0' | LC_ALL=C sort -z \
       | cpio -o -H newc --quiet -0 --owner=0:0 \
-      | gzip -n -9 > "$img" )
+      | gzip -n -9 ) > "$tmpd/main.new.gz"
+  # Reassemble: verbatim early segment(s) + deterministically repacked main.
+  cat "$tmpd/early.bin" "$tmpd/main.new.gz" > "$img"
   rm -rf "$tmpd"
 done
 
