@@ -1,6 +1,6 @@
 # mk-stemcell.nix
-# Pure derivation: package bootable qcow2 disk into a 6-member BOSH stemcell tarball.
-# Input: bootableDisk (path to root.qcow2)
+# Pure derivation: package a bootable disk into a 6-member BOSH stemcell tarball.
+# Input: bootableDisk (path to the infra-specific disk image, e.g. root.qcow2 or root.img)
 # Output: $out/bosh-stemcell-VERSION-INFRASTRUCTURE-HYPERVISOR-OS-VERSION.tgz
 {
   stdenv,

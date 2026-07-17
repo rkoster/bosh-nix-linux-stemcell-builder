@@ -1,6 +1,7 @@
-# Ubuntu Noble deb selection. Pure-data package lists (base/boot/bosh) plus the
-# assembled top-level `image` set. Folds base-packages.nix, boot-packages.nix,
-# noble-packages.nix, and image-packages.nix.
+# Ubuntu deb selection. Pure-data package lists (base/boot) plus the assembled
+# top-level `image` set. The release-specific `bosh` package set is sourced from
+# the release descriptor (build/ubuntu/release.nix). Folds base-packages.nix,
+# boot-packages.nix, and image-packages.nix.
 {
   lib,
   callPackage,

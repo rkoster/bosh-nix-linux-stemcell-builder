@@ -6,8 +6,9 @@
   release ? "noble",
 }:
 let
+  infra = import ../infra { infrastructure = "aws"; };
   bootableDiskDerivation = callPackage ./aws-disk.nix { inherit release; };
-  bootableDisk = "${bootableDiskDerivation}/root.img";
+  bootableDisk = "${bootableDiskDerivation}/${infra.diskFilename}";
   # Same memoized AWS os-image derivation used inside aws-disk.nix; provides the
   # generated stemcell metadata members under ${metadata}/metadata/.
   metadata = callPackage ../rootfs/os-image.nix {

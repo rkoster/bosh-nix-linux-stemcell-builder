@@ -6,8 +6,9 @@
   release ? "noble",
 }:
 let
+  infra = import ../infra { infrastructure = "openstack"; };
   bootableDiskDerivation = callPackage ./openstack-kvm-disk.nix { inherit release; };
-  bootableDisk = "${bootableDiskDerivation}/root.qcow2";
+  bootableDisk = "${bootableDiskDerivation}/${infra.diskFilename}";
   # Same memoized derivation used inside openstack-kvm-disk.nix; provides the
   # generated stemcell metadata members under ${metadata}/metadata/.
   metadata = callPackage ../rootfs/os-image.nix { inherit release; };
