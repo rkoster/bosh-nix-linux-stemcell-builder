@@ -9,7 +9,7 @@
 }:
 
 let
-  aptPins = callPackage ./apt-pins.nix { };
+  aptPins = callPackage ./apt-pins.nix { inherit release; };
   essential = callPackage ./essential.nix { inherit aptPins; };
 
   desc = import ./release.nix { inherit release; };
