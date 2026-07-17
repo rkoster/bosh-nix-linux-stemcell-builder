@@ -88,6 +88,18 @@
                 artifact = resolute-stemcell-aws-disk;
                 file = "root.img";
               };
+
+              # Self-contained identity gate for the Resolute rootfs. Embeds the
+              # key os_image invariants (see build/checks/resolute-os-image-spec.sh
+              # for the full upstream-spec diff) without needing the external spec.
+              resolute-os-image-spec = pkgs.runCommand "resolute-os-image-spec" { } ''
+                tar -xzf ${resolute-stemcell-rootfs}/rootfs-staged.tar.gz -C . ./etc/passwd ./etc/group ./etc/gshadow ./etc/pam.d/common-password
+                grep -qP '^session\toptional\t+pam_lastlog2\.so showfailed' ./etc/pam.d/common-password
+                ! grep -qE '(^|:)_runit-log(:|$)' ./etc/passwd ./etc/group
+                grep -q '^vcap:x:1000:1000:BOSH System User:/home/vcap:/bin/bash$' ./etc/passwd
+                ! grep -q 'systemd-timesync' ./etc/passwd
+                touch $out
+              '';
             };
 
             # Explicit outputs: os-image / os-image-aws (Phase 1),
