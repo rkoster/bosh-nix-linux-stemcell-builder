@@ -718,6 +718,21 @@ Expected: script exits 0; instance reaches `running`; SSH succeeds; `uname`/os-r
 
 - [ ] **Step 2: Record the validation outcome** in the plan (pass + stemcell sha) and stop for review before any cleanup of Phase 0 scratch notes.
 
+> **VALIDATION RESULT (2026-07-17): PASS.** The offline-assembled OpenStack disk
+> boots on the Incus lab. Deploy of `nix-stemcell-poc` completed; instance
+> `vm-instance/0` reached state `started` (IP 10.246.0.107); SSH succeeded;
+> `uname -r` = `6.8.0-31-generic`; `/etc/os-release` = Ubuntu 24.04 LTS (Noble);
+> root mounted rw from `/dev/sda2`. BIOS-grub + `by-uuid` boot path intact — no
+> root-device ALERT / grub rescue. Deployment deleted on cleanup; stemcell
+> retained (in use by a pre-existing `zookeeper` deployment). OpenStack disk
+> sha256 `40102976b5d855a8e7dd00d1ab547c71ec5fee50eb382226dec0336ff161214e`.
+>
+> NOTE: script `deploy-stemcell.sh` has a pre-existing bug (builds with
+> `--no-link` at line 141 then expects `./result` at line 153) and a Step 6
+> `bosh vms` grep that misses the no-jobs "started" state; validation was run by
+> materializing `./result` via `nix build -o ./result` and confirming state via
+> `bosh instances`. These are deploy-tooling issues, not stemcell defects.
+
 > AWS raw-image boot is **not** covered by the Incus lab (out of scope for this automated gate); AWS determinism is covered by Task 2.8, and AWS functional boot remains a separate manual step.
 
 ---
