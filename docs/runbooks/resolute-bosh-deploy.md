@@ -49,6 +49,44 @@ bosh stemcells
 # Expect a row: ubuntu-resolute   0.0.5-nix   ...
 ```
 
+### 2a. LXD / Incus CPI: "Missing creation date" workaround
+
+On the **LXD/Incus CPI**, `bosh upload-stemcell` can fail with:
+
+```
+CPI error 'Bosh::Clouds::CloudError' with message 'Missing creation date' in 'create_stemcell'
+```
+
+Cause: the CPI derives the image `creation_date` from the ModTime of the first
+tar entry larger than 100 MiB — which for the openstack stemcell is `root.img`
+*inside* the nested `image` tar.gz. Our build is fully deterministic (every mtime
+pinned to epoch 0), so the CPI reads `creation_date = 0` and rejects it.
+
+Repack a **deploy copy** with a real, non-zero mtime on the inner `root.img`.
+This does **not** alter the committed, byte-reproducible build artifact:
+
+```bash
+work=$(mktemp -d)
+tar -xf /tmp/res-openstack/*.tgz -C "$work"          # outer members
+mkdir "$work/inner"
+tar -xzf "$work/image" -C "$work/inner"              # -> root.img (a qcow2)
+touch -d '2026-01-01 12:00:00' "$work/inner/root.img"
+tar -C "$work/inner" -czf "$work/image" --owner=0 --group=0 root.img
+touch -d '1970-01-01' "$work/image"
+tar -C "$work" -czf /tmp/res-openstack-deploy.tgz --owner=0 --group=0 \
+  stemcell.MF packages.txt dev_tools_file_list.txt image sbom.spdx.json sbom.cdx.json
+
+bosh upload-stemcell /tmp/res-openstack-deploy.tgz
+```
+
+> The mtime the CPI reads is on the **inner** `root.img`, not the outer `image`
+> member — bumping the outer member alone is not sufficient.
+
+If a broken/old stemcell is already registered at the same version, delete it
+first (delete any deployment using it, then `bosh delete-stemcell
+bosh-openstack-kvm-ubuntu-resolute/0.0.5-nix`); the director skips re-upload when
+name+version already exist.
+
 ---
 
 ## 3. Deploy a smoke manifest
@@ -114,6 +152,12 @@ bosh -d smoke ssh -c 'systemctl is-system-running'
 
 Expect `running` (or `degraded` only for units unrelated to the stemcell — inspect
 with `systemctl --failed` if degraded).
+
+> **Known benign degradation:** `audit-rules.service` shows as failed on a
+> validated Resolute deploy. On first boot it finishes successfully; the failure
+> is the bosh-agent-triggered reload where `augenrules --load` prints `No change`
+> and exits 1 — a quirk of the base Ubuntu audit package, not a stemcell
+> regression. The audit rules are loaded. Confirm no *other* unit is failed.
 
 ### 4.3 pam_lastlog2 is active (Resolute replaced pam_lastlog)
 

@@ -34,6 +34,40 @@ Determinism: `nix flake check` = "all checks passed!" — all rootfs/disk determ
 checks (Noble + Resolute, openstack + aws) build twice and compare byte-for-byte.
 
 --------------------------------------------------------------------------------
+Live-director deploy validation (Resolute, openstack-kvm / LXD-Incus CPI)
+--------------------------------------------------------------------------------
+2026-07-17  RESULT: PASS — full BOSH deploy of the Resolute stemcell on the
+`instant-bosh` director (LXD/Incus CPI), deployment `smoke-resolute`, task 30359.
+
+  - VM created in ~60s; bosh-agent responsive; monit running; canary updated and
+    post-start completed (deploy task state = done). This is the live-director
+    analogue of the QEMU boot check above.
+  - OS identity: `. /etc/os-release` -> ID=ubuntu VERSION_ID=26.04 (Resolute).
+  - pam_lastlog2 active: `session optional pam_lastlog2.so showfailed` present in
+    /etc/pam.d (Resolute replaced pam_lastlog with libpam-lastlog2).
+  - runit absent: no `chpst`, no `runsvdir`, no `_runit-log` account (descriptor
+    correctly omits the runit package + its service account).
+  - systemctl is-system-running = degraded, with the ONLY failed unit being
+    `audit-rules.service`. This is benign and NOT a Resolute regression: on first
+    boot the service Finished successfully; the failure is the bosh-agent-triggered
+    reload where `augenrules --load` prints "No change" and exits 1 (a known
+    augenrules quirk in the base Ubuntu audit package). Audit rules are loaded.
+
+IMPORTANT (LXD/Incus CPI quirk found during upload): `bosh upload-stemcell` fails
+with CPI error 'Missing creation date' in create_stemcell when the tarball is
+fully deterministic (all mtimes @ epoch 0). The LXD CPI derives the image
+creation_date from the ModTime of the first >100MiB tar entry — which for the
+openstack stemcell is `root.img` *inside* the nested `image` tar.gz. Operator
+workaround (does NOT change the committed deterministic build): repack a deploy
+copy with a real, non-zero mtime on the inner `root.img`. See the deploy runbook.
+
+CAUTION: an earlier deploy (task 30351) timed out at "Waiting for agent" because a
+STALE tgz built before the bootable-rootfs.sh fix was uploaded — its shipped
+`root.img` carried the broken 245KB microcode-only initrd (kernel saw sda1/sda2 but
+initramfs never resolved root=UUID=4444... -> "Waiting 300 sec"). Always rebuild the
+stemcell tgz from the current flake; the good disk has a ~76MB initrd.
+
+--------------------------------------------------------------------------------
 Prior FAIL (2026-07-17, before fix) — retained for history
 --------------------------------------------------------------------------------
 Earlier both disks FAILED to boot with a root-mount kernel panic:
