@@ -4,10 +4,8 @@
 # staged ESP; Phase B (bootable-disk) assembles them into a deterministic disk.
 { callPackage }:
 let
-  osImage = callPackage ../rootfs/os-image.nix { };
-  mkBootableRootfs = callPackage ./bootable-rootfs.nix { };
   mkBootableDisk = callPackage ./bootable-disk.nix { };
-  rootfsTree = mkBootableRootfs { inherit osImage; };
+  rootfsTree = callPackage ./openstack-kvm-rootfs.nix { };
 in
 mkBootableDisk {
   inherit rootfsTree;

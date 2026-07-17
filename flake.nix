@@ -22,6 +22,8 @@
         perSystem =
           { pkgs, ... }:
           let
+            noble-stemcell-rootfs = pkgs.callPackage ./build/stemcells/openstack-kvm-rootfs.nix { };
+            noble-stemcell-aws-rootfs = pkgs.callPackage ./build/stemcells/aws-rootfs.nix { };
             noble-stemcell-disk = pkgs.callPackage ./build/stemcells/openstack-kvm-disk.nix { };
             noble-stemcell-aws-disk = pkgs.callPackage ./build/stemcells/aws-disk.nix { };
           in
@@ -34,19 +36,28 @@
               programs.shellcheck.enable = true;
             };
 
-            # Determinism guards: emit the assembled disk sha256 as a stable
-            # fingerprint. The genuine same-machine byte-determinism gate is
-            # `nix build .#noble-stemcell-disk --rebuild` (+ -aws-disk); see
-            # build/checks/disk-determinism.nix for why --rebuild on the check
-            # itself is insufficient.
+            # Determinism guards: emit built-artifact sha256s as stable
+            # fingerprints. The genuine same-machine byte-determinism gate is
+            # `nix build <pkg> --rebuild` for BOTH layers (Phase A rootfs AND
+            # the disk) -- the disk build reuses the cached rootfs, so RC5/RC7
+            # (Phase A) are only re-exercised by rebuilding the rootfs. See
+            # build/checks/disk-determinism.nix.
             checks = {
+              rootfs-determinism-openstack = pkgs.callPackage ./build/checks/disk-determinism.nix {
+                artifact = noble-stemcell-rootfs;
+                file = "rootfs-staged.tar.gz";
+              };
+              rootfs-determinism-aws = pkgs.callPackage ./build/checks/disk-determinism.nix {
+                artifact = noble-stemcell-aws-rootfs;
+                file = "rootfs-staged.tar.gz";
+              };
               disk-determinism-openstack = pkgs.callPackage ./build/checks/disk-determinism.nix {
-                disk = noble-stemcell-disk;
-                diskFile = "root.qcow2";
+                artifact = noble-stemcell-disk;
+                file = "root.qcow2";
               };
               disk-determinism-aws = pkgs.callPackage ./build/checks/disk-determinism.nix {
-                disk = noble-stemcell-aws-disk;
-                diskFile = "root.img";
+                artifact = noble-stemcell-aws-disk;
+                file = "root.img";
               };
             };
 
@@ -65,12 +76,14 @@
                 noble-rootfs = pkgs.callPackage ./build/rootfs/rootfs.nix { };
 
                 # PHASE 2 (OpenStack/KVM)
+                noble-stemcell-rootfs = noble-stemcell-rootfs;
                 noble-stemcell-disk = noble-stemcell-disk;
                 noble-stemcell = openstack-kvm;
                 openstack-kvm = openstack-kvm;
 
                 # PHASE 2 (AWS / xen, aws-raw heavy stemcell)
                 os-image-aws = pkgs.callPackage ./build/rootfs/os-image.nix { infrastructure = "aws"; };
+                noble-stemcell-aws-rootfs = noble-stemcell-aws-rootfs;
                 noble-stemcell-aws-disk = noble-stemcell-aws-disk;
                 noble-stemcell-aws = aws;
                 aws = aws;

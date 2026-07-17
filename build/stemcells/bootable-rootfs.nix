@@ -10,8 +10,6 @@
 #                              --acls, so non-root ownership + setuid survive)
 #   $out/esp/                  staged EFI System Partition tree (BOOTX64.EFI)
 {
-  vmTools,
-  stdenv,
   systemdMinimal,
   util-linux,
   dosfstools,

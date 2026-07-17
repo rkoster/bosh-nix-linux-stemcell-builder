@@ -85,13 +85,7 @@ if [ ! -f /boot/initrd.img ]; then
 fi
 # Rebuild each initrd deterministically in case initramfs-tools ignored
 # SOURCE_DATE_EPOCH: re-pack the cpio with sorted names, pin every extracted
-# entry's mtime to @0 (fixes initramfs mtime non-determinism), and gzip -n.
-#
-# NOTE: this loop (and the GRUB_CMDLINE_LINUX value below) is duplicated from
-# build/stemcells/bootable-disk.sh; the two will be consolidated when Phase B
-# rewrites bootable-disk.sh. THIS copy additionally pins the mtimes of the
-# extracted cpio entries before repacking (the disk copy does not), so this is
-# the canonical version.
+# entry's mtime to @0 (fixes initramfs mtime non-determinism, RC5), and gzip -n.
 for img in /boot/initrd.img-*; do
   [ -e "$img" ] || continue
   tmpd=$(mktemp -d)
@@ -132,29 +126,21 @@ ln -sf /dev/vda2 "/dev/disk/by-uuid/44444444-4444-4444-4444-444444444444"
 # --grub-setup=/bin/true skips the actual MBR embed while still producing
 # /boot/grub/i386-pc/*.mod and /boot/grub/i386-pc/core.img.
 grub-install --target=i386-pc --boot-directory=/boot --grub-setup=/bin/true \
-  --no-floppy /dev/vda || true
+  --no-floppy /dev/vda
 
+# Assert the BIOS grub artifacts exist. We deliberately do NOT fall back to a
+# hand-rolled `grub-mkimage` here: its prefix/module set is NOT guaranteed to
+# match what grub-install produces, so a fallback core.img could differ between
+# builds (breaking determinism) or embed a wrong prefix (breaking BIOS boot).
+# If the tested primary path ever fails, fail LOUDLY rather than emit a
+# divergent artifact. (normal.mod is checked too so a partial install -- core.img
+# without modules, or vice versa -- cannot silently pass.)
 if [ ! -f /boot/grub/i386-pc/core.img ] || [ ! -f /boot/grub/i386-pc/normal.mod ]; then
-  # Fallback: generate core.img directly with grub-mkimage and copy modules.
-  # Also assert a representative module (normal.mod) so a partial grub-install
-  # (core.img written but modules missing, or vice versa) cannot silently pass.
-  #
-  # NOTE: the hard-coded --prefix='(,msdos2)/boot/grub' below is NOT necessarily
-  # equivalent to the prefix grub-install auto-detects on the primary path, so
-  # this fallback is a best-effort safety net only -- the primary
-  # --grub-setup=/bin/true path is the tested/expected one.
-  echo "core.img/normal.mod missing after grub-install; falling back to grub-mkimage" >&2
-  mkdir -p /boot/grub/i386-pc
-  cp -a /usr/lib/grub/i386-pc/*.mod /boot/grub/i386-pc/ 2>/dev/null || true
-  cp -a /usr/lib/grub/i386-pc/*.lst /boot/grub/i386-pc/ 2>/dev/null || true
-  cp -a /usr/lib/grub/i386-pc/*.img /boot/grub/i386-pc/ 2>/dev/null || true
-  grub-mkimage --directory=/usr/lib/grub/i386-pc --format=i386-pc \
-    --output=/boot/grub/i386-pc/core.img --prefix='(,msdos2)/boot/grub' \
-    biosdisk part_msdos ext2 configfile normal
-  echo "GRUB_BIOS_PATH=grub-mkimage-fallback" > /boot/grub/.bios-path
-else
-  echo "GRUB_BIOS_PATH=grub-setup-bin-true" > /boot/grub/.bios-path
+  echo "FATAL: grub-install did not produce i386-pc/core.img + normal.mod" >&2
+  ls -la /boot/grub/i386-pc/ >&2 || true
+  exit 1
 fi
+echo "GRUB_BIOS_PATH=grub-setup-bin-true" > /boot/grub/.bios-path
 
 # Generate EFI (x86_64-efi) grub files into the staging ESP (no NVRAM write).
 mkdir -p /staging-esp

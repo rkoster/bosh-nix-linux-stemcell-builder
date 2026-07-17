@@ -4,13 +4,8 @@
 # staged ESP; Phase B (bootable-disk) assembles them into a deterministic disk.
 { callPackage }:
 let
-  osImage = callPackage ../rootfs/os-image.nix { infrastructure = "aws"; };
-  mkBootableRootfs = callPackage ./bootable-rootfs.nix { };
   mkBootableDisk = callPackage ./bootable-disk.nix { };
-  rootfsTree = mkBootableRootfs {
-    inherit osImage;
-    name = "noble-stemcell-aws-rootfs";
-  };
+  rootfsTree = callPackage ./aws-rootfs.nix { };
 in
 mkBootableDisk {
   inherit rootfsTree;
