@@ -105,5 +105,10 @@
     "grub2"
     "zlib1g-dev"
     "build-essential"
+    # cpio: Noble pulled this in transitively via initramfs-tools-core; Resolute's
+    # initramfs-tools-core switched that dependency to 3cpio, so add cpio
+    # explicitly — bootable-rootfs.sh repacks the initramfs with classic cpio for
+    # deterministic output.
+    "cpio"
   ];
 }
