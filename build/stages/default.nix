@@ -14,16 +14,16 @@ let
   # NOTE: upstream's `system_aws_modules` is a verified no-op, so it is
   # deliberately omitted here.
   # (verified against upstream bosh-linux-stemcell-builder; see docs/superpowers/plans/2026-07-16-aws-stemcell-target.md and the AWS design spec.)
-  infraStages =
-    if infrastructure == "openstack" then
-      [ (import ./openstack-agent-settings { }) ]
-    else if infrastructure == "aws" then
-      [
-        (import ./aws-agent-settings { })
-        (import ./udev-aws-rules { })
-      ]
-    else
-      throw "stages/default.nix: unsupported infrastructure '${infrastructure}'";
+  infra = import ../infra { inherit infrastructure; };
+
+  # Map infra descriptor stage names to their imported stage dirs. Keeping the
+  # import table here preserves stage-dir locality while selection stays data.
+  infraStageTable = {
+    openstack-agent-settings = import ./openstack-agent-settings { };
+    aws-agent-settings = import ./aws-agent-settings { };
+    udev-aws-rules = import ./udev-aws-rules { };
+  };
+  infraStages = map (n: infraStageTable.${n}) infra.infraStageNames;
 in
 [
   # Pure stages: import individual stage directories (each resolves to its own default.nix)
