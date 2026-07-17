@@ -3,12 +3,19 @@
 # Exposed as its own package so its determinism can be verified directly with
 # `nix build .#noble-stemcell-aws-rootfs --rebuild` -- the disk-level --rebuild
 # reuses this cached tree and would NOT re-exercise Phase A (RC5/RC7) fixes.
-{ callPackage }:
+{
+  callPackage,
+  release ? "noble",
+}:
 let
-  osImage = callPackage ../rootfs/os-image.nix { infrastructure = "aws"; };
+  desc = import ../ubuntu/release.nix { inherit release; };
+  osImage = callPackage ../rootfs/os-image.nix {
+    infrastructure = "aws";
+    inherit release;
+  };
   mkBootableRootfs = callPackage ./bootable-rootfs.nix { };
 in
 mkBootableRootfs {
   inherit osImage;
-  name = "noble-stemcell-aws-rootfs";
+  name = "${desc.release}-stemcell-aws-rootfs";
 }

@@ -2,13 +2,18 @@
 # Flake output `noble-stemcell-aws-disk`. Output: $out/root.img
 # Two-phase build: Phase A (bootable-rootfs) emits a canonical rootfs tarball +
 # staged ESP; Phase B (bootable-disk) assembles them into a deterministic disk.
-{ callPackage }:
+{
+  callPackage,
+  release ? "noble",
+}:
 let
+  desc = import ../ubuntu/release.nix { inherit release; };
+  infra = import ../infra { infrastructure = "aws"; };
   mkBootableDisk = callPackage ./bootable-disk.nix { };
-  rootfsTree = callPackage ./aws-rootfs.nix { };
+  rootfsTree = callPackage ./aws-rootfs.nix { inherit release; };
 in
 mkBootableDisk {
   inherit rootfsTree;
-  name = "noble-stemcell-aws";
-  diskFormat = "raw";
+  name = "${desc.release}-stemcell${infra.nameSuffix}";
+  diskFormat = infra.diskFormat;
 }
