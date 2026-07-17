@@ -1,7 +1,7 @@
 # Multi-Release / Multi-Infrastructure Build Matrix (Noble + Resolute)
 
 Date: 2026-07-17
-Status: Approved design, pending implementation
+Status: Implemented (Noble Plan 1 + Resolute Plan 2)
 
 ## Summary
 
