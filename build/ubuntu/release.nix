@@ -6,7 +6,7 @@
 let
   registry = {
     noble = import ./releases/noble.nix;
-    # resolute added in a later plan
+    resolute = import ./releases/resolute.nix;
   };
 in
 if registry ? ${release} then
