@@ -1,19 +1,21 @@
 # PHASE 2 (OpenStack/KVM): package the bootable qcow2 into a BOSH stemcell .tgz.
 # Flake outputs `noble-stemcell` and `openstack-kvm`.
 # Output: $out/bosh-stemcell-<version>-openstack-kvm-ubuntu-noble.tgz
-{ callPackage }:
+{
+  callPackage,
+  release ? "noble",
+}:
 let
-  bootableDiskDerivation = callPackage ./openstack-kvm-disk.nix { };
+  bootableDiskDerivation = callPackage ./openstack-kvm-disk.nix { inherit release; };
   bootableDisk = "${bootableDiskDerivation}/root.qcow2";
   # Same memoized derivation used inside openstack-kvm-disk.nix; provides the
   # generated stemcell metadata members under ${metadata}/metadata/.
-  metadata = callPackage ../rootfs/os-image.nix { };
+  metadata = callPackage ../rootfs/os-image.nix { inherit release; };
   mkStemcell = callPackage ./package.nix { };
 in
 mkStemcell {
-  inherit bootableDisk metadata;
+  inherit bootableDisk metadata release;
   version = "0.0.5-nix";
   os = "ubuntu";
-  release = "noble";
   infrastructure = "openstack";
 }
