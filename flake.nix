@@ -1,5 +1,5 @@
 {
-  description = "Nix POC: Ubuntu Noble BOSH stemcell (milestones M0-M1)";
+  description = "Nix: Ubuntu Noble + Resolute BOSH stemcell build matrix";
 
   # Upstream nixpkgs stable release. Replaces the unmaintained
   # github:lheckemann/nixpkgs#foreign-distros fork: nixos-26.05 ships the same
@@ -26,6 +26,19 @@
             noble-stemcell-aws-rootfs = pkgs.callPackage ./build/stemcells/aws-rootfs.nix { };
             noble-stemcell-disk = pkgs.callPackage ./build/stemcells/openstack-kvm-disk.nix { };
             noble-stemcell-aws-disk = pkgs.callPackage ./build/stemcells/aws-disk.nix { };
+
+            resolute-stemcell-rootfs = pkgs.callPackage ./build/stemcells/openstack-kvm-rootfs.nix {
+              release = "resolute";
+            };
+            resolute-stemcell-aws-rootfs = pkgs.callPackage ./build/stemcells/aws-rootfs.nix {
+              release = "resolute";
+            };
+            resolute-stemcell-disk = pkgs.callPackage ./build/stemcells/openstack-kvm-disk.nix {
+              release = "resolute";
+            };
+            resolute-stemcell-aws-disk = pkgs.callPackage ./build/stemcells/aws-disk.nix {
+              release = "resolute";
+            };
           in
           {
             # Formatter and checks
@@ -59,6 +72,22 @@
                 artifact = noble-stemcell-aws-disk;
                 file = "root.img";
               };
+              rootfs-determinism-resolute-openstack = pkgs.callPackage ./build/checks/disk-determinism.nix {
+                artifact = resolute-stemcell-rootfs;
+                file = "rootfs-staged.tar.gz";
+              };
+              rootfs-determinism-resolute-aws = pkgs.callPackage ./build/checks/disk-determinism.nix {
+                artifact = resolute-stemcell-aws-rootfs;
+                file = "rootfs-staged.tar.gz";
+              };
+              disk-determinism-resolute-openstack = pkgs.callPackage ./build/checks/disk-determinism.nix {
+                artifact = resolute-stemcell-disk;
+                file = "root.qcow2";
+              };
+              disk-determinism-resolute-aws = pkgs.callPackage ./build/checks/disk-determinism.nix {
+                artifact = resolute-stemcell-aws-disk;
+                file = "root.img";
+              };
             };
 
             # Explicit outputs: os-image / os-image-aws (Phase 1),
@@ -69,6 +98,10 @@
                 blobstoreClis = pkgs.callPackage ./build/pkgs/blobstore-clis.nix { };
                 openstack-kvm = pkgs.callPackage ./build/stemcells/openstack-kvm.nix { };
                 aws = pkgs.callPackage ./build/stemcells/aws.nix { };
+                resolute-openstack-kvm = pkgs.callPackage ./build/stemcells/openstack-kvm.nix {
+                  release = "resolute";
+                };
+                resolute-aws = pkgs.callPackage ./build/stemcells/aws.nix { release = "resolute"; };
               in
               {
                 # PHASE 1: OS image (rootfs tarball)
@@ -87,6 +120,21 @@
                 noble-stemcell-aws-disk = noble-stemcell-aws-disk;
                 noble-stemcell-aws = aws;
                 aws = aws;
+
+                # PHASE 1/2 (Resolute)
+                os-image-resolute = pkgs.callPackage ./build/rootfs/os-image.nix { release = "resolute"; };
+                os-image-resolute-aws = pkgs.callPackage ./build/rootfs/os-image.nix {
+                  infrastructure = "aws";
+                  release = "resolute";
+                };
+                resolute-stemcell-rootfs = resolute-stemcell-rootfs;
+                resolute-stemcell-disk = resolute-stemcell-disk;
+                resolute-stemcell = resolute-openstack-kvm;
+                resolute-openstack-kvm = resolute-openstack-kvm;
+                resolute-stemcell-aws-rootfs = resolute-stemcell-aws-rootfs;
+                resolute-stemcell-aws-disk = resolute-stemcell-aws-disk;
+                resolute-stemcell-aws = resolute-aws;
+                resolute-aws = resolute-aws;
 
                 # Source-built components (names preserved from the old auto-discovery)
                 bosh-agent = pkgs.callPackage ./build/pkgs/bosh-agent.nix { };
