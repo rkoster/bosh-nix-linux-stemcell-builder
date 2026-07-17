@@ -15,12 +15,17 @@
   metadata,
   version ? "0.0.1-nix",
   os ? "ubuntu",
-  osVersion ? "noble",
+  release ? "noble",
   infrastructure ? "openstack",
-  hypervisor ? "kvm",
 }:
 
 let
+  # Descriptors drive the manifest fields (was inline scalars + conditionals).
+  releaseDesc = import ../ubuntu/release.nix { inherit release; };
+  infra = import ../infra { inherit infrastructure; };
+  osVersion = releaseDesc.osVersion;
+  hypervisor = infra.hypervisor;
+
   # Compute stemcell archive filename per upstream convention:
   # bosh-stemcell-VERSION-INFRASTRUCTURE-HYPERVISOR-OS-OSVERSION.tgz
   stemcellFilename = "bosh-stemcell-${version}-${infrastructure}-${hypervisor}-${os}-${osVersion}.tgz";
@@ -33,11 +38,11 @@ let
   # (`${stemcellFormatsYaml}`) sits at base indent, which renders at
   # column 0 after Nix ''-string common-indent stripping. Changing
   # either the leading spaces on that heredoc line OR the spaces inside
-  # this value will break the manifest YAML nesting.
-  stemcellFormatsYaml =
-    if infrastructure == "aws" then "  - aws-raw" else "  - openstack-qcow2\n  - openstack-raw";
+  # this value will break the manifest YAML nesting. Value is transcribed
+  # verbatim into the infra descriptor (build/infra/*.nix).
+  stemcellFormatsYaml = infra.stemcellFormatsYaml;
 
-  diskFormatValue = if infrastructure == "aws" then "raw" else "qcow2";
+  diskFormatValue = infra.diskFormatValue;
 
   # Trailing cloud_properties entries appended after `architecture`
   # (upstream additional_cloud_properties).
@@ -47,12 +52,9 @@ let
   # (`${extraCloudPropsYaml}`, 6 spaces → 2 after ''-strip) supplies the
   # cloud_properties key level. Any second line embeds `\n  ` to hold
   # that same 2-space level. Do not alter the heredoc placeholder line's
-  # leading whitespace or the embedded `\n  ` here.
-  extraCloudPropsYaml =
-    if infrastructure == "aws" then
-      "root_device_name: /dev/sda1\n  boot_mode: uefi-preferred"
-    else
-      "auto_disk_config: true";
+  # leading whitespace or the embedded `\n  `. Value is transcribed
+  # verbatim into the infra descriptor (build/infra/*.nix).
+  extraCloudPropsYaml = infra.extraCloudPropsYaml;
 in
 
 stdenv.mkDerivation {

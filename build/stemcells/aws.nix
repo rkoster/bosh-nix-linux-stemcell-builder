@@ -14,7 +14,6 @@ mkStemcell {
   inherit bootableDisk metadata;
   version = "0.0.5-nix";
   os = "ubuntu";
-  osVersion = "noble";
+  release = "noble";
   infrastructure = "aws";
-  hypervisor = "xen";
 }
