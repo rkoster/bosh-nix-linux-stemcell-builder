@@ -69,3 +69,13 @@ chmod 0000 "$root/etc/gshadow" || true
 chown root:root "$root/etc/gshadow" 2>/dev/null || true
 chmod 0000 "$root/etc/shadow" || true
 chown root:root "$root/etc/shadow" 2>/dev/null || true
+
+# tmp.mount masking (Resolute / systemd 259). BOSH manages /tmp as a tmpfs of
+# its own size; mask systemd's static tmp.mount so it cannot override that.
+# MASK_TMP_MOUNT is injected by systemd-services/default.nix (1 for releases
+# whose descriptor has features.runit == false, i.e. Resolute; 0 otherwise).
+# shellcheck disable=SC2154
+if [ "$MASK_TMP_MOUNT" = "1" ]; then
+  mkdir -p "$root/etc/systemd/system"
+  ln -sf /dev/null "$root/etc/systemd/system/tmp.mount"
+fi

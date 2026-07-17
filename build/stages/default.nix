@@ -34,7 +34,7 @@ in
   (import ./rsyslog { })
   (import ./audit { })
   (import ./misc-os { codename = releaseDesc.codename; })
-  (import ./systemd-services { })
+  (import ./systemd-services { maskTmpMount = !releaseDesc.features.runit; })
 
   # Interpolated stages (embed store paths)
   (import ./agent { inherit bosh-agent monit; })
